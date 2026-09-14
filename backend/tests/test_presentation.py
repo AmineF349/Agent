@@ -4,8 +4,9 @@ from pathlib import Path
 from app.services.presentation_generator import PresentationGenerator
 from app.models.schemas import PresentationRequest, SlideContent
 
-def test_presentation_generator():
-    gen = PresentationGenerator(output_dir="/tmp/test_generated")
+def test_presentation_generator(tmp_path):
+    # tmp_path (fixture pytest) est portable Windows/Linux/macOS, contrairement à /tmp
+    gen = PresentationGenerator(output_dir=str(tmp_path / "test_generated"))
     req = PresentationRequest(
         presentation_type="Management",
         title="Test Presentation",

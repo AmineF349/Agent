@@ -2,12 +2,30 @@
 
 ## Prérequis
 
-- Python 3.10+ (recommandé 3.11)
-- Docker + Docker Compose (optionnel mais recommandé)
+- Python 3.10, 3.11 ou 3.12 – 64 bits (recommandé 3.11). Python 3.13+ non supporté.
+- Docker + Docker Compose (**optionnel** – inutile sous Windows, voir Option 0)
 - VS Code (recommandé)
 - 4GB RAM minimum, 8GB recommandé
+- Aucune base de données ni service externe : le projet n'utilise ni PostgreSQL, ni Redis
+  (le service `postgres` de `docker-compose.yml` est optionnel et n'est pas utilisé par le code).
 
-## Option 1: Docker Compose (Recommandé - 1 commande)
+## Option 0: Windows natif – sans Docker, sans droits admin (Recommandé sur poste d'entreprise)
+
+```powershell
+git clone https://github.com/AmineF349/Agent.git
+cd Agent
+.\setup.ps1     # détecte/installe Python 3.11 (sans admin), crée .venv, installe les dépendances, crée .env
+.\start.ps1     # backend :8000 + frontend :8501, ouvre le navigateur
+.\stop.ps1      # arrêt
+.\test.ps1      # pytest
+```
+
+Si PowerShell bloque les scripts : `powershell -ExecutionPolicy Bypass -File .\setup.ps1`
+ou double-clic sur `setup.cmd` / `start.cmd`.
+
+Guide complet (options, proxy d'entreprise, Python absent, dépannage) : [WINDOWS_SETUP.md](WINDOWS_SETUP.md).
+
+## Option 1: Docker Compose (Linux / macOS / Windows non restreint)
 
 ```bash
 # Cloner repo
@@ -29,44 +47,47 @@ docker-compose up --build
 
 C'est tout! Tout est fonctionnel.
 
-## Option 2: Local sans Docker (Dev)
+## Option 2: Local sans Docker, manuel (Dev – Linux / macOS / Windows)
+
+Un seul environnement virtuel à la racine pour le backend et le frontend
+(`requirements-windows.txt` regroupe les deux et ne contient que des wheels précompilées ;
+il fonctionne aussi sous Linux/macOS).
+
+```bash
+git clone https://github.com/AmineF349/Agent.git
+cd Agent
+python -m venv .venv
+source .venv/bin/activate          # Windows PowerShell : .\.venv\Scripts\Activate.ps1
+pip install -r requirements-windows.txt
+cp .env.example .env               # Windows : Copy-Item .env.example .env
+```
 
 ### Backend
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate  # Windows
-
-pip install -r requirements.txt
-
-# Copier env
-cp ../.env.example ../.env
-
-# Lancer
-uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
+uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
 
 # Vérifier
 curl http://localhost:8000/health
-# Ouvrir docs
-open http://localhost:8000/docs
+# Docs : http://localhost:8000/docs
 ```
+
+Le backend charge automatiquement le `.env` de la racine du dépôt et résout ses chemins
+(`knowledge_base/`, `backend/generated/`) de façon absolue : il peut être lancé depuis
+n'importe quel répertoire (`uvicorn app.main:app` depuis `backend/`, ou
+`PYTHONPATH=backend uvicorn app.main:app` depuis la racine).
 
 ### Frontend
 
 ```bash
 cd frontend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Lancer (dans autre terminal)
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
-
-# Ouvrir
-open http://localhost:8501
+BACKEND_URL=http://localhost:8000 streamlit run app.py --server.port 8501 --server.address 127.0.0.1
+# Windows PowerShell : $env:BACKEND_URL = "http://localhost:8000"; streamlit run app.py --server.port 8501
+# Ouvrir http://localhost:8501
 ```
+
+> Les `requirements.txt` séparés de `backend/` et `frontend/` restent utilisés par les Dockerfiles.
 
 ### Variables d'environnement
 
@@ -112,18 +133,21 @@ curl http://localhost:8501
 cd backend
 pytest tests/ -v
 
-# Doit passer 15+ tests
+# Doit passer 18 tests (Windows : .\test.ps1)
 ```
 
 ## Troubleshooting
 
+**Windows (proxy, ExecutionPolicy, Python absent, ports occupés) :** voir [WINDOWS_SETUP.md – Dépannage](WINDOWS_SETUP.md#6-dépannage).
+
 **Backend ne démarre pas:**
-- Vérifier port 8000 libre: `lsof -i :8000`
-- Vérifier PYTHONPATH: `export PYTHONPATH=backend`
-- Logs: `docker-compose logs backend`
+- Vérifier port 8000 libre: `lsof -i :8000` (Linux/macOS) / `Get-NetTCPConnection -LocalPort 8000` (Windows) / `.\stop.ps1`
+- Vérifier PYTHONPATH: `export PYTHONPATH=backend` (ou lancer depuis `backend/`)
+- Logs: fenêtre backend, `logs\backend.log` (mode `-Background`), ou `docker-compose logs backend`
 
 **Frontend ne se connecte pas au backend:**
-- Vérifier BACKEND_URL dans .env: `BACKEND_URL=http://localhost:8000` (local) ou `http://backend:8000` (docker)
+- Vérifier la variable d'environnement `BACKEND_URL` : `http://localhost:8000` (local, positionnée par `start.ps1`) ou `http://backend:8000` (docker)
+- Derrière un proxy d'entreprise : `NO_PROXY=localhost,127.0.0.1` (positionnée par `start.ps1`)
 - Vérifier CORS_ORIGINS
 
 **APIs publiques down:**
@@ -156,13 +180,15 @@ pytest tests/ -v
 │   ├── concepts/ (capture_rate, baseload, BESS...)
 │   └── models/ (AFRY, Aurora)
 ├── docs/
-├── docker-compose.yml
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 (Windows natif)
+├── requirements-windows.txt
+├── docker-compose.yml (optionnel)
 └── .env.example
 ```
 
 ## Prochaines Étapes
 
-1. Lire `docs/VSCODE_GUIDE.md` pour dev dans VS Code
+1. Lire `docs/WINDOWS_SETUP.md` (Windows) et `docs/VSCODE_GUIDE.md` pour dev dans VS Code
 2. Lire `docs/USER_GUIDE.md` pour utilisation
 3. Lire `ARCHITECTURE.md` pour architecture
 4. Explorer `http://localhost:8000/docs` pour API

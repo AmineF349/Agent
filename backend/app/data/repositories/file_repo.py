@@ -1,14 +1,17 @@
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import logging
+
+from ...core.paths import GENERATED_DIR
 
 logger = logging.getLogger(__name__)
 
 class FileRepository:
-    def __init__(self, base_path: str = "generated"):
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: Optional[str] = None):
+        # Par défaut : <repo>/backend/generated (chemin absolu, indépendant du CWD)
+        self.base_path = Path(base_path) if base_path else GENERATED_DIR
         self.base_path.mkdir(parents=True, exist_ok=True)
 
     def save_json(self, data: Dict[str, Any], filename: str) -> str:

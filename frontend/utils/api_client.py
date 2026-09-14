@@ -1,10 +1,20 @@
 import os
 import requests
 import httpx
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Charge le .env de la racine du depot (BACKEND_URL, ports...) sans ecraser les
+# variables deja presentes dans l'environnement (start.ps1 / docker-compose).
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
+except Exception:  # pragma: no cover - python-dotenv absent ou .env illisible
+    pass
 
 class APIClient:
     def __init__(self, base_url: Optional[str] = None):

@@ -4,6 +4,8 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports
+enable_backend_imports()  # autorise `from backend.app...` dans les pages, quel que soit le répertoire courant
 
 # Page config
 st.set_page_config(
@@ -68,8 +70,12 @@ with st.sidebar:
     if health.get("status") == "ok":
         st.success(f"✅ Backend OK | LLM: {health.get('llm_type')} | Public APIs: {health.get('public_apis')}")
     else:
-        st.error(f"❌ Backend KO: {health.get('error')} - Lancez `docker-compose up` ou `uvicorn backend.app.main:app`")
-        st.markdown(f"Backend URL: {client.base_url}")
+        st.error(f"❌ Backend KO: {health.get('error')}")
+        st.markdown(
+            f"Backend URL: `{client.base_url}`  \n"
+            "Windows (sans Docker) : lancez `.\\start.ps1` à la racine du projet  \n"
+            "Manuel : `cd backend` puis `uvicorn app.main:app --port 8000`"
+        )
 
     st.divider()
     st.markdown("💡 **Tips Proactif**")
@@ -131,7 +137,7 @@ with tab1:
             st.warning("Pas de données live, backend peut-être down ou API Energy-Charts indisponible - fallback mock utilisé")
     except Exception as e:
         st.error(f"Erreur live data: {e}")
-        st.info("Lancez backend: `cd backend && uvicorn app.main:app --reload --port 8000`")
+        st.info("Lancez le backend: `.\\start.ps1` (Windows) ou `cd backend && uvicorn app.main:app --reload --port 8000`")
 
 with tab2:
     st.subheader("🤖 Agent Conversationnel (LangGraph + Fallback)")

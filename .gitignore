@@ -41,6 +41,10 @@ frontend/generated/
 *.log
 logs/
 
+# Windows natif (setup.ps1)
+.python/
+.python-extract/
+
 # DB
 *.db
 *.sqlite

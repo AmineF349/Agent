@@ -12,19 +12,23 @@
 - Pylance (ms-python.vscode-pylance)
 - Black Formatter
 - Flake8
-- Docker
+- PowerShell
 - YAML
 - Jupyter
 
 ## Configuration Python
 
+**Windows :** lancez d'abord `.\setup.ps1` (terminal PowerShell, à la racine). Le venv
+`.venv\Scripts\python.exe` est alors présélectionné par `.vscode/settings.json`.
+
+Sinon (Linux/macOS ou manuel) :
+
 1. `Ctrl+Shift+P` (ou `Cmd+Shift+P` Mac) -> "Python: Select Interpreter"
-2. Choisir `.venv/bin/python` ou créer nouveau venv:
+2. Choisir `.venv/bin/python` (ou `.venv\Scripts\python.exe`) ou créer nouveau venv:
    ```bash
    python -m venv .venv
-   source .venv/bin/activate
-   pip install -r backend/requirements.txt
-   pip install -r frontend/requirements.txt
+   source .venv/bin/activate          # Windows : .\.venv\Scripts\Activate.ps1
+   pip install -r requirements-windows.txt   # backend + frontend, wheels précompilées
    ```
 
 ## Lancement Debug (F5)
@@ -50,14 +54,15 @@
 
 ## Tasks (Ctrl+Shift+P -> Tasks: Run Task)
 
-- **Install Backend**: pip install backend
-- **Install Frontend**: pip install frontend
-- **Install All**: les deux
-- **Run Backend**: lance backend sans debug
-- **Run Frontend**: lance frontend sans debug
-- **Docker Compose Up**: lance tout via Docker
-- **Run Tests**: pytest
-- **Lint Backend**: flake8
+- **Windows: Setup (setup.ps1)**: installation complète sans Docker (`-Dev` inclus)
+- **Windows: Start (setup.ps1)**: backend + frontend dans deux fenêtres (tâche build par défaut : `Ctrl+Shift+B`)
+- **Windows: Stop (stop.ps1)**: arrêt des deux services
+- **Windows: Tests (test.ps1)**: pytest (tâche test par défaut)
+- **Run Backend (venv)**: lance backend sans debug (interpréteur `.venv`)
+- **Run Frontend (venv)**: lance frontend sans debug
+- **Run Tests (venv)**: pytest
+- **Lint Backend (flake8)**
+- **Docker Compose Up**: optionnel, hors poste Windows restreint
 
 ## Tests
 
@@ -131,7 +136,13 @@ def test_new_kpi():
 - `st.json()` pour afficher dict
 - Logs dans terminal Streamlit
 
-### Docker
+### Windows sans Docker
+
+- `start.ps1` ouvre deux fenêtres PowerShell : les logs y défilent en direct
+- Mode `-Background` : logs dans `logs\backend.log` et `logs\frontend.log`
+- `.\stop.ps1` pour tout arrêter (aussi disponible en tâche VS Code)
+
+### Docker (optionnel)
 
 - Si Docker Compose Up, logs dans terminal Task
 - `docker-compose logs -f backend` pour voir logs
@@ -195,11 +206,11 @@ def test_new_kpi():
 
 - **Copilot**: Si activé, suggestions code automatiques
 - **Jupyter**: Ouvrir `backend/data_samples/*.csv` avec Jupyter pour explorer
-- **Docker extension**: Gérer containers, images, logs via UI
+- **PowerShell extension**: coloration/analyse des scripts `setup.ps1` / `start.ps1`
 
 ## Prochaines Étapes
 
-- Lire `docs/INSTALLATION.md`
+- Lire `docs/INSTALLATION.md` et `docs/WINDOWS_SETUP.md`
 - Lire `docs/USER_GUIDE.md`
 - Explorer `backend/app/main.py` et `frontend/app.py`
 - Lancer tests et debugger

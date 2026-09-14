@@ -4,15 +4,23 @@
 
 ### Lancement
 
+**Windows (poste d'entreprise, sans Docker ni droits admin) :**
+```powershell
+.\setup.ps1     # une seule fois
+.\start.ps1     # ouvre http://localhost:8501
+```
+Arrêt : `.\stop.ps1`. Si PowerShell bloque les scripts, double-cliquez sur `setup.cmd` puis `start.cmd`.
+Détails : `docs/WINDOWS_SETUP.md`.
+
 **Docker (1 commande):**
 ```bash
 docker-compose up --build
 ```
 Ouvrir http://localhost:8501
 
-**Ou local:**
+**Ou local manuel :**
 - Backend: `cd backend && uvicorn app.main:app --reload --port 8000`
-- Frontend: `cd frontend && streamlit run app.py --port 8501`
+- Frontend: `cd frontend && streamlit run app.py --server.port 8501` (avec `BACKEND_URL=http://localhost:8000`)
 - Ouvrir http://localhost:8501
 
 ### Workflow Analyste Quotidien

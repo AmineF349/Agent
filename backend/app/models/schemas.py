@@ -145,6 +145,8 @@ class PresentationResponse(BaseModel):
     pdf_path: Optional[str] = None
     slide_count: int
     message: str
+    # URLs relatives de téléchargement via l'API (ex: /api/v1/presentation/download/x.pptx)
+    download_urls: Optional[Dict[str, str]] = None
 
 # --- Knowledge Base ---
 class KnowledgeQuery(BaseModel):

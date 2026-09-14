@@ -1,0 +1,68 @@
+# =============================================================================
+# Power Market Intelligence Agent - Dependances Windows natif (sans Docker)
+# =============================================================================
+# Un seul environnement virtuel (.venv) pour backend + frontend.
+# Toutes les versions ci-dessous disposent de wheels precompilees win_amd64
+# pour Python 3.10, 3.11 et 3.12 : aucune compilation, aucun Visual C++ requis.
+# Installe par setup.ps1 avec `pip install --only-binary :all:`.
+#
+# Python 3.13+ n'est PAS supporte (numpy 1.26 / pandas 2.2.1 n'ont pas de wheel).
+#
+# Differences volontaires par rapport a backend/requirements.txt :
+#   - python-pptx 0.6.23 (au lieu de 0.6.21) : 0.6.21 n'a pas de wheel et
+#     plante sur Windows/Python 3.10+ (AttributeError collections.abc, fix #762).
+#   - psycopg2-binary / sqlalchemy / alembic retires : PostgreSQL n'est pas
+#     utilise par le code (aucun import), c'etait un artefact de docker-compose.
+#   - uvicorn[standard] : identique, uvloop est automatiquement exclu sous
+#     Windows (marqueur d'environnement) ; le rechargement utilise watchfiles.
+# =============================================================================
+
+# --- Backend : API ---
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+pydantic==2.6.3
+pydantic-settings==2.1.0
+python-multipart==0.0.9
+python-dotenv==1.0.1
+
+# --- Data & Analysis ---
+pandas==2.2.1
+polars==0.20.22
+numpy==1.26.4
+scipy==1.12.0
+openpyxl==3.1.2
+
+# --- Visualisation ---
+plotly==5.19.0
+matplotlib==3.8.3
+
+# --- Generation de presentations (PPTX / DOCX / PDF) ---
+python-pptx==0.6.23
+python-docx==1.1.2
+reportlab==4.1.0
+Pillow==10.3.0
+
+# --- IA / Agent (fonctionne sans cle API : fallback local) ---
+langchain==0.1.12
+langchain-core==0.1.32
+langchain-community==0.0.28
+langgraph==0.0.26
+openai==1.30.0
+anthropic==0.28.0
+tiktoken==0.6.0
+
+# --- Connecteurs de donnees ---
+requests==2.31.0
+httpx==0.27.0
+entsoe-py==0.6.10
+
+# --- Utilitaires ---
+tenacity==8.2.3
+structlog==24.1.0
+orjson==3.9.15
+aiofiles==23.2.1
+
+# --- Frontend : Streamlit ---
+streamlit==1.35.0
+streamlit-option-menu==0.3.12
+streamlit-extras==0.4.6

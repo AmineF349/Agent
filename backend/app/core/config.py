@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import Optional, List
-import os
+
+from .paths import ENV_FILE, ensure_runtime_dirs
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
@@ -46,12 +47,15 @@ class Settings(BaseSettings):
         return bool(self.ENTSOE_API_KEY)
 
     class Config:
-        env_file = ".env"
+        # Le .env de la racine du dépôt est chargé quel que soit le répertoire
+        # courant (lancement depuis backend/, la racine, VS Code, start.ps1...).
+        # Un .env dans le répertoire courant reste pris en compte en priorité.
+        env_file = (str(ENV_FILE), ".env")
         env_file_encoding = "utf-8"
         extra = "ignore"
 
 settings = Settings()
 
-# Ensure generated folder exists
-os.makedirs("generated", exist_ok=True)
-os.makedirs("data_samples", exist_ok=True)
+# Crée generated/ et data_samples/ à côté du code backend (chemins absolus),
+# et non dans le répertoire courant.
+ensure_runtime_dirs()

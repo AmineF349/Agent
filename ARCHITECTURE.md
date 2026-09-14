@@ -82,8 +82,10 @@
 
 ### Infra
 
-- **Docker**: Dockerfile.backend, Dockerfile.frontend, docker-compose.yml
-- **DB**: Postgres 15 (Docker) ou SQLite (local)
+- **Windows natif (sans Docker / sans admin)**: `setup.ps1`, `start.ps1`, `stop.ps1`, `test.ps1`, `scripts/windows/common.ps1`, `requirements-windows.txt` (un seul `.venv` backend + frontend, wheels précompilées uniquement)
+- **Docker (optionnel)**: Dockerfile.backend, Dockerfile.frontend, docker-compose.yml
+- **Persistance**: fichiers uniquement (`backend/generated/`, `knowledge_base/`). Le service Postgres de docker-compose n'est **pas utilisé par le code** (aucun import sqlalchemy/psycopg2) ; `DATABASE_URL` est ignorée.
+- **Chemins**: résolus de façon absolue par `backend/app/core/paths.py` et `frontend/utils/paths.py` (surcharge via `GENERATED_DIR`, `KNOWLEDGE_BASE_DIR`, `DATA_SAMPLES_DIR`, `PMIA_ENV_FILE`) → indépendance du répertoire courant
 - **IDE**: VS Code avec settings, launch, tasks, extensions
 
 ## Modules Détail
@@ -400,7 +402,22 @@
 
 - `api_client.py`: APIClient class avec methods health, market_analysis, data_quality_csv, challenge_scenario, prepare_meeting, generate_minutes, generate_presentation, knowledge_search, fetch_market_data, live_prices, agent_chat, bess_revenue
 
-## Docker
+## Lancement Windows natif (sans Docker)
+
+```
+start.ps1 ──► powershell.exe  .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   (cwd backend/)
+          ──► attend GET /health
+          ──► powershell.exe  .venv\Scripts\python.exe -m streamlit run app.py --server.port 8501                      (cwd frontend/)
+          ──► attend GET /_stcore/health, ouvre le navigateur, écrit logs/pids.json
+stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/8501 s'ils sont tenus par un python du .venv
+```
+
+- `setup.ps1` : détection Python 3.10-3.12 x64 (py launcher, PATH, LocalAppData, conda, scoop, `.python\`) → sinon installation « pour moi uniquement » (python.org, `InstallAllUsers=0`) ou Python portable (paquet nuget PSF extrait dans `.python\`) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements-windows.txt` → `.env` → `scripts/windows/check_install.py`.
+- Variables positionnées au lancement : `BACKEND_URL`, `PYTHONUTF8=1`, `NO_PROXY=localhost,127.0.0.1`, `STREAMLIT_SERVER_HEADLESS=true`.
+- Les services écoutent sur 127.0.0.1 uniquement (aucune règle pare-feu / élévation).
+- `/health` ne bloque plus sur les APIs publiques : sonde en arrière-plan avec cache (`?sync=true` pour forcer).
+
+## Docker (optionnel)
 
 **Dockerfile.backend**:
 - python:3.11-slim, build-essential, libpq-dev, requirements.txt, app code, generated folder, uvicorn
@@ -417,16 +434,16 @@
 ## VS Code
 
 **.vscode/settings.json**:
-- python.defaultInterpreterPath .venv/bin/python, linting flake8, formatting black, testing pytest backend/tests, PYTHONPATH
+- python.defaultInterpreterPath `${workspaceFolder}/.venv/Scripts/python.exe`, linting flake8, formatting black, testing pytest backend/tests, PYTHONPATH/PYTHONUTF8/BACKEND_URL/NO_PROXY dans le terminal intégré
 
 **.vscode/launch.json**:
 - Backend FastAPI (uvicorn), Frontend Streamlit, Compound, Pytest All, Test Data Quality, Test Market Analysis
 
 **.vscode/tasks.json**:
-- Install Backend/Frontend/All, Run Backend/Frontend, Docker Compose Up, Run Tests, Lint Backend
+- Windows: Setup/Start/Stop/Tests (scripts PowerShell), Run Backend/Frontend/Tests (venv), Lint Backend, Docker Compose Up (optionnel)
 
 **.vscode/extensions.json**:
-- Python, Pylance, Black, Flake8, Docker, YAML, Prettier, Jupyter, Copilot
+- Python, Pylance, Black, Flake8, PowerShell, YAML, Prettier, Jupyter, Copilot
 
 ## Tests
 
@@ -513,9 +530,14 @@
 - Interactif, beau, Streamlit compatible
 - vs Matplotlib: plus moderne
 
-**Docker Compose**:
+**Scripts PowerShell natifs (Windows)**:
+- Docker Desktop souvent interdit sur les postes d'entreprise (et exige des droits admin / WSL2)
+- Tout tient dans un `.venv` : aucune installation système, aucune élévation, désinstallation = suppression du dossier
+- `--only-binary :all:` garantit l'absence de compilation (pas de Visual C++ Build Tools) ; Python 3.10-3.12 x64 requis pour disposer des wheels
+
+**Docker Compose (optionnel)**:
 - 1 commande pour tout lancer, reproducibilité
-- Postgres pour prod, SQLite fallback local
+- Postgres présent dans le compose mais non utilisé par le code (persistance fichiers)
 
 **VS Code config**:
 - Pour dev local facile, debugging, tests, tasks

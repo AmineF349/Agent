@@ -11,6 +11,7 @@ import re
 
 from ..models.schemas import KnowledgeResult, KnowledgeResponse
 from ..agent.llm_provider import LLMProvider
+from ..core.paths import KNOWLEDGE_BASE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +23,21 @@ class KnowledgeBaseService:
     - Synthèse via LLM si disponible
     """
 
-    def __init__(self, kb_path: str = "knowledge_base"):
-        self.kb_path = Path(kb_path)
-        # Try multiple possible locations
-        possible_paths = [
-            Path(kb_path),
-            Path("knowledge_base"),
-            Path("../knowledge_base"),
-            Path("/app/knowledge_base"),
-            Path("backend/knowledge_base"),
-            Path(__file__).parent.parent.parent.parent / "knowledge_base"
-        ]
-        for p in possible_paths:
-            if p.exists():
-                self.kb_path = p
-                break
+    def __init__(self, kb_path: Optional[str] = None):
+        # Chemin absolu par défaut (<repo>/knowledge_base), indépendant du CWD.
+        # Un chemin explicite ou la variable KNOWLEDGE_BASE_DIR reste prioritaire.
+        self.kb_path = Path(kb_path) if kb_path else KNOWLEDGE_BASE_DIR
+        if not self.kb_path.exists():
+            # Emplacements de secours (Docker, lancement depuis la racine...)
+            possible_paths = [
+                Path("knowledge_base"),
+                Path("../knowledge_base"),
+                Path("/app/knowledge_base"),
+            ]
+            for p in possible_paths:
+                if p.exists():
+                    self.kb_path = p
+                    break
 
         self.documents: List[Dict[str, Any]] = []
         self.llm = LLMProvider()

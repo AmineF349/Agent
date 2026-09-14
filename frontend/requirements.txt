@@ -1,3 +1,5 @@
+# Dépendances frontend pour l'image Docker (Dockerfile.frontend).
+# Installation Windows native sans Docker : utilisez requirements-windows.txt à la racine.
 streamlit==1.35.0
 plotly==5.19.0
 pandas==2.2.1

@@ -2,6 +2,8 @@ import streamlit as st
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports, GENERATED_DIR, DATA_SAMPLES_DIR, KNOWLEDGE_BASE_DIR
+enable_backend_imports()  # autorise `from backend.app...` quel que soit le répertoire courant
 
 st.set_page_config(page_title="Knowledge Center", page_icon="📚", layout="wide")
 client = APIClient()
@@ -119,9 +121,7 @@ with tab2:
 with tab3:
     st.subheader("❓ FAQ")
 
-    faq_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "knowledge_base", "faq.md")
-    if not os.path.exists(faq_path):
-        faq_path = "knowledge_base/faq.md"
+    faq_path = str(KNOWLEDGE_BASE_DIR / "faq.md")
 
     try:
         with open(faq_path, 'r', encoding='utf-8') as f:

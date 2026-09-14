@@ -2,6 +2,8 @@ import streamlit as st
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports, GENERATED_DIR, DATA_SAMPLES_DIR, KNOWLEDGE_BASE_DIR
+enable_backend_imports()  # autorise `from backend.app...` quel que soit le répertoire courant
 import json
 
 st.set_page_config(page_title="Scenario Review", page_icon="🔍", layout="wide")
@@ -37,10 +39,8 @@ with tab1:
 
         if st.button("Charger sample_scenario.json"):
             try:
-                sample_path = "backend/data_samples/sample_scenario.json"
-                if not os.path.exists(sample_path):
-                    sample_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", "data_samples", "sample_scenario.json")
-                with open(sample_path) as f:
+                sample_path = str(DATA_SAMPLES_DIR / "sample_scenario.json")
+                with open(sample_path, encoding="utf-8") as f:
                     data = json.load(f)
                     st.json(data)
                     scenario_name = data.get("scenario_name", scenario_name)

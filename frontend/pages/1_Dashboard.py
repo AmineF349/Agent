@@ -2,6 +2,8 @@ import streamlit as st
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports, GENERATED_DIR, DATA_SAMPLES_DIR, KNOWLEDGE_BASE_DIR
+enable_backend_imports()  # autorise `from backend.app...` quel que soit le répertoire courant
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
