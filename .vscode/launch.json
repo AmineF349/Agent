@@ -1,0 +1,84 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Backend FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--reload",
+                "--port",
+                "8000",
+                "--host",
+                "0.0.0.0"
+            ],
+            "cwd": "${workspaceFolder}/backend",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "jinja": true
+        },
+        {
+            "name": "Frontend Streamlit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "streamlit",
+            "args": [
+                "run",
+                "app.py",
+                "--server.port",
+                "8501",
+                "--server.address",
+                "0.0.0.0"
+            ],
+            "cwd": "${workspaceFolder}/frontend",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/frontend",
+                "BACKEND_URL": "http://localhost:8000"
+            }
+        },
+        {
+            "name": "Backend + Frontend (Compound)",
+            "type": "compound",
+            "configurations": ["Backend FastAPI", "Frontend Streamlit"]
+        },
+        {
+            "name": "Pytest All",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "backend/tests",
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            }
+        },
+        {
+            "name": "Test Data Quality",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "backend/tests/test_data_quality.py",
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Test Market Analysis",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "backend/tests/test_market_analysis.py",
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

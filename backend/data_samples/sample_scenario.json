@@ -1,0 +1,19 @@
+{
+  "scenario_name": "AFRY Central 2030 FR",
+  "model_type": "AFRY",
+  "country": "FR",
+  "horizon": 2030,
+  "assumptions": [
+    {"name": "gas_price", "value": 38.5, "unit": "EUR/MWh", "year": 2030, "source": "AFRY"},
+    {"name": "co2_price", "value": 120, "unit": "EUR/t", "year": 2030, "source": "AFRY"},
+    {"name": "demand", "value": 580, "unit": "TWh", "year": 2030, "source": "RTE"},
+    {"name": "solar_capacity", "value": 45, "unit": "GW", "year": 2030, "source": "PPE"},
+    {"name": "wind_onshore_capacity", "value": 38, "unit": "GW", "year": 2030, "source": "PPE"},
+    {"name": "wind_offshore_capacity", "value": 8, "unit": "GW", "year": 2030, "source": "PPE"},
+    {"name": "nuclear_availability", "value": 0.75, "unit": "factor", "year": 2030, "source": "EDF"},
+    {"name": "solar_capture_rate", "value": 0.78, "unit": "factor", "year": 2030},
+    {"name": "wind_capture_rate", "value": 0.88, "unit": "factor", "year": 2030},
+    {"name": "negative_hours", "value": 250, "unit": "hours", "year": 2030}
+  ],
+  "prices": [65, 72, 58, 45, 38, 42, 55, 78, 85, 82, 75, 68, 65, 62, 65, 72, 85, 92, 88, 75, 62, 52, 48, 44]
+}

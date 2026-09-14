@@ -1,0 +1,85 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Install Backend",
+            "type": "shell",
+            "command": "pip install -r backend/requirements.txt",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Install Frontend",
+            "type": "shell",
+            "command": "pip install -r frontend/requirements.txt",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "Install All",
+            "type": "shell",
+            "command": "pip install -r backend/requirements.txt && pip install -r frontend/requirements.txt",
+            "group": "build",
+            "dependsOn": []
+        },
+        {
+            "label": "Run Backend",
+            "type": "shell",
+            "command": "cd backend && uvicorn app.main:app --reload --port 8000 --host 0.0.0.0",
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Frontend",
+            "type": "shell",
+            "command": "cd frontend && streamlit run app.py --server.port 8501 --server.address 0.0.0.0",
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Docker Compose Up",
+            "type": "shell",
+            "command": "docker-compose up --build",
+            "group": "build",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "cd backend && python -m pytest tests/ -v",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "Lint Backend",
+            "type": "shell",
+            "command": "cd backend && flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics",
+            "group": "build"
+        }
+    ]
+}

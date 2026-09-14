@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.env
+.env.local
+
+# IDE
+.vscode/.ropeproject
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+generated/
+backend/generated/
+frontend/generated/
+*.pptx
+*.docx
+*.pdf
+!backend/data_samples/*.csv
+!backend/data_samples/*.json
+
+# Logs
+*.log
+logs/
+
+# DB
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+postgres_data/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Node (if frontend React future)
+node_modules/
+npm-debug.log
