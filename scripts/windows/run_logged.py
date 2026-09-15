@@ -38,7 +38,13 @@ def main() -> int:
         # Pas de fenetre console pour le processus fils (mode arriere-plan)
         creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+    # BOM UTF-8 en tete d'un fichier neuf : Windows PowerShell 5.1 (Get-Content,
+    # Bloc-notes) detecte alors l'UTF-8 au lieu de lire le log en ANSI (mojibake
+    # sur les accents / emojis des logs applicatifs).
+    new_file = not os.path.exists(log_path) or os.path.getsize(log_path) == 0
     with open(log_path, "ab", buffering=0) as log:
+        if new_file:
+            log.write(b"\xef\xbb\xbf")
         stamp = time.strftime("%Y-%m-%d %H:%M:%S")
         log.write(f"\n===== {stamp} | cwd={os.getcwd()} | {' '.join(cmd)} =====\n".encode("utf-8"))
         proc = subprocess.Popen(
