@@ -41,7 +41,29 @@ jobs:
         run: python -m flake8 backend/app frontend scripts --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: pytest
         working-directory: backend
-        run: python -m pytest tests/ -v --tb=short
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest tests/ -v --tb=short -p no:cacheprovider 2>&1 | tee pytest.log
+        # Le rapport complet est aussi publié dans le résumé du job (lisible via l'API
+        # même quand le téléchargement des logs bruts est bloqué par un proxy).
+      - name: Résumé pytest
+        if: always()
+        shell: bash
+        working-directory: backend
+        run: |
+          {
+            echo "### pytest (py${{ matrix.python }})"
+            echo '```'
+            grep -E "passed|failed|error" pytest.log | tail -3 || true
+            echo '```'
+            echo "<details><summary>Sortie complète</summary>"
+            echo
+            echo '```'
+            tail -c 60000 pytest.log
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Le vrai test : les scripts PowerShell sur Windows, SANS droits admin,
