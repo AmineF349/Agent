@@ -49,34 +49,27 @@ jobs:
         # même quand le téléchargement des logs bruts est bloqué par un proxy).
       - name: Résumé pytest (annotations lisibles via l'API)
         if: always()
-        shell: bash
+        shell: python
         working-directory: backend
         run: |
-          {
-            echo "### pytest (py${{ matrix.python }})"
-            echo '```'
-            grep -E "passed|failed|error" pytest.log | tail -3 || true
-            echo '```'
-            echo "<details><summary>Sortie complète</summary>"
-            echo
-            echo '```'
-            tail -c 60000 pytest.log
-            echo '```'
-            echo "</details>"
-          } >> "$GITHUB_STEP_SUMMARY"
-          # Chaque test en échec -> une annotation ::error (visible dans l'API check-runs)
-          grep -E "^(FAILED|ERROR) " pytest.log | head -20 | while read -r line; do
-            msg=$(printf '%s' "$line" | tr -d '\r' | cut -c1-900)
-            echo "::error title=pytest py${{ matrix.python }}::${msg}"
-          done
-          # Bloc "short test summary" + dernière trace -> annotation warning (multi-ligne encodée)
-          if grep -q "short test summary" pytest.log; then
-            summary=$(sed -n '/short test summary/,$p' pytest.log | head -40 | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g' | cut -c1-4000)
-            echo "::warning title=pytest summary py${{ matrix.python }}::${summary}"
-            trace=$(grep -nE "^E  " pytest.log | head -15 | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g' | cut -c1-4000)
-            [ -n "$trace" ] && echo "::warning title=pytest assertions py${{ matrix.python }}::${trace}"
-          fi
-          exit 0
+          import os, re, pathlib
+          log = pathlib.Path("pytest.log").read_text(errors="replace") if pathlib.Path("pytest.log").exists() else "(pas de pytest.log)"
+          lines = log.splitlines()
+          tail = [l for l in lines if re.search(r"\b(passed|failed|error)\b", l)][-3:]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("### pytest (py${{ matrix.python }})\n```\n" + "\n".join(tail) + "\n```\n")
+              f.write("<details><summary>Sortie complète</summary>\n\n```\n" + log[-60000:] + "\n```\n</details>\n")
+          def ann(level, title, text):
+              text = text.replace("%", "%25").replace("\r", "").replace("\n", "%0A")[:4000]
+              print(f"::{level} title={title}::{text}")
+          for l in [l for l in lines if l.startswith(("FAILED ", "ERROR "))][:20]:
+              ann("error", "pytest py${{ matrix.python }}", l[:900])
+          if "short test summary" in log:
+              i = next(k for k, l in enumerate(lines) if "short test summary" in l)
+              ann("warning", "pytest summary py${{ matrix.python }}", "\n".join(lines[i:i + 40]))
+              asserts = [l for l in lines if l.startswith("E  ")][:15]
+              if asserts:
+                  ann("warning", "pytest assertions py${{ matrix.python }}", "\n".join(asserts))
 
   # ---------------------------------------------------------------------------
   # Le vrai test : les scripts PowerShell sur Windows, SANS droits admin,
