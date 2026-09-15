@@ -7,9 +7,9 @@
 
 | | |
 |---|---|
-| **Branche** | `arena/01a0a4e1-agent` (commit `c8830b6`) |
+| **Branche** | `arena/01a0a4e1-agent` |
 | **PR** | [#2](https://github.com/AmineF349/Agent/pull/2) → base `arena/01a09f1d-agent` |
-| **Volume** | 27 fichiers, +2501 / −82 (15 créés, 12 modifiés) |
+| **Volume** | 28 fichiers, +2838 / −82 (**16 créés, 12 modifiés**) |
 | **Objectif** | Installer et lancer 100 % du projet sur Windows, **sans Docker Desktop** et **sans droits administrateur** |
 
 ---
@@ -258,16 +258,26 @@ vérifiés dans le fichier officiel
 ## 7. État du dépôt git
 
 ```
-* c8830b6  docs: corrige le compte des imports (16, pas 17)     <- cette session
-* e37d507  feat(windows): installation et lancement natifs...   <- cette session
+* (commits de cette session, sur arena/01a0a4e1-agent)
 * e3863e6  feat: Power Market Intelligence Agent v1.0.0         <- intact
 * 2b74842  Initial commit                                       <- intact
 ```
 
+Vérifié par `git ls-remote --heads origin` :
+
+| Branche | SHA | État |
+|---|---|---|
+| `main` | `2b74842` | **inchangée** |
+| `arena/01a09f1d-agent` | `e3863e6` | **inchangée** |
+| `arena/01a0a06d-agent` | `addafa83` | jamais touchée |
+| `arena/01a0a4e1-agent` | tip de la PR #2 | seule branche modifiée |
+
 - Historique **linéaire**, aucun rebase, aucun force-push, aucun commit de merge
-  (la reprise de `arena/01a09f1d-agent` était un *fast-forward*).
-- Branches `main` (`2b74842`) et `arena/01a09f1d-agent` (`e3863e6`) **inchangées**.
-- Seule `arena/01a0a4e1-agent` a reçu des commits.
+  (la reprise de `arena/01a09f1d-agent` était un *fast-forward* :
+  `git log --merges` est vide).
+- Les commits de cette session portent l'auteur `Arena Agent <agent@arena.ai>`,
+  passé en ligne de commande (`git -c user.name=... commit`) : **rien n'a été
+  écrit dans `.git/config`**.
 
 **La PR #2 n'est pas encore fusionnée** : `arena/01a09f1d-agent` ne contient pas
 encore ces modifications. Fusion en un clic sur la PR, ou :
@@ -280,7 +290,7 @@ gh pr merge 2 --repo AmineF349/Agent --merge
 
 ## 8. Fichiers livrés
 
-### Créés (15)
+### Créés (16)
 
 ```
 setup.ps1  start.ps1  stop.ps1  test.ps1
