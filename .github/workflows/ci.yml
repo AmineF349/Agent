@@ -217,7 +217,7 @@ jobs:
           $state = @()
           $state += "PS $($PSVersionTable.PSVersion) | venv: $(Test-Path .\.venv\Scripts\python.exe) | .env: $(Test-Path .\.env)"
           $state += "Listening 8000/8501/8010/8511: " + ((Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 8000, 8501, 8010, 8511 } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) pid=$($_.OwningProcess)" }) -join ", ")
-          $state += "python procs: " + ((Get-Process -Name "python*", "pwsh", "powershell" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessName)#$($_.Id)" }) -join " ")
+          $state += "python procs: " + ((Get-Process -Name "python*", "pwsh", "powershell" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessName):$($_.Id)" }) -join " ")
           Publish-Annotation "etat" ($state -join "`n")
           # Rejoue setup.ps1 en capturant TOUT (Information + erreurs) pour voir ce qu'il affiche
           $replay = & { .\setup.ps1 } *>&1 | ForEach-Object { "$_" }
