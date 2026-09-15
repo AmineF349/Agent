@@ -9,8 +9,7 @@
 |---|---|
 | **Branche** | `arena/01a0a4e1-agent` |
 | **PR** | [#2](https://github.com/AmineF349/Agent/pull/2) → base `arena/01a09f1d-agent` |
-| **Volume** | **28 fichiers : 16 créés, 12 modifiés** |
-| **Diff exact** | voir l'onglet *Files changed* de la PR #2 (les compteurs de lignes de ce tableau seraient faux dès le prochain commit) |
+| **Volume** | liste complète en §8 — le compte exact est sur l'onglet *Files changed* de la PR #2 (tout compteur recopié ici deviendrait faux au prochain commit) |
 | **Objectif** | Installer et lancer 100 % du projet sur Windows, **sans Docker Desktop** et **sans droits administrateur** |
 
 ### En 30 secondes
@@ -308,19 +307,26 @@ gh pr merge 2 --repo AmineF349/Agent --merge
 
 ## 8. Fichiers livrés
 
-### Créés (16)
+### Créés (17)
 
 ```
-setup.ps1  start.ps1  stop.ps1  test.ps1
-setup.bat  start.bat  stop.bat  test.bat
-scripts/win/Common.ps1
-scripts/win/env_writer.py
-scripts/win/doctor.py
-frontend/.streamlit/config.toml
-backend/requirements-dev.txt
-docs/INSTALLATION_WINDOWS.md
-MODIFICATIONS_WINDOWS.md        <- ce document
-.gitattributes
+setup.ps1                            installation (Python, .venv, deps, .env, diagnostic)
+start.ps1                            demarrage backend + frontend
+stop.ps1                             arret de l'arbre de processus
+test.ps1                             pytest
+setup.bat                            wrapper anti-ExecutionPolicy
+start.bat                            wrapper anti-ExecutionPolicy
+stop.bat                             wrapper anti-ExecutionPolicy
+test.bat                             wrapper anti-ExecutionPolicy
+scripts/win/Common.ps1               bibliotheque partagee
+scripts/win/env_writer.py            generation du .env natif
+scripts/win/doctor.py                auto-diagnostic
+frontend/.streamlit/config.toml      Streamlit local, sans telemetrie
+backend/requirements-dev.txt         pytest
+docs/INSTALLATION_WINDOWS.md         mode d'emploi utilisateur
+MODIFICATIONS_WINDOWS.md             ce document
+.gitattributes                       CRLF impose sur les scripts Windows
+LICENSE                              manquait depuis e3863e6 (lien casse)
 ```
 
 ### Modifiés (12)
