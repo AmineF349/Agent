@@ -5,6 +5,7 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red.svg)](https://streamlit.io/)
+[![CI](https://github.com/AmineF349/Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/AmineF349/Agent/actions/workflows/ci.yml)
 [![Windows](https://img.shields.io/badge/Windows-natif%20sans%20Docker-0078D6.svg)](docs/WINDOWS_SETUP.md)
 [![Docker](https://img.shields.io/badge/Docker-optionnel-lightgrey.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -49,6 +50,7 @@ cd Agent
 - Si PowerShell bloque les scripts : `powershell -ExecutionPolicy Bypass -File .\setup.ps1` ou double-clic sur `setup.cmd` / `start.cmd`.
 - Pas de Python sur le poste ? `setup.ps1` propose de l'installer **sans admin** (installeur « pour moi uniquement » ou Python portable dans `.\.python\`).
 - Guide complet + dépannage proxy / politique d'exécution : **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**.
+- Validé en continu par la CI sur runners Windows (Windows PowerShell 5.1 et PowerShell 7, Python 3.10 / 3.11 / 3.12, mode Python portable).
 
 ### 🐳 Docker (Linux / macOS / Windows non restreint)
 
@@ -319,8 +321,12 @@ Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensi
 ```
 ```bash
 cd backend && pytest tests/ -v    # Linux / macOS
-# 18 tests: data_quality, market_analysis, scenario, meeting, presentation
+# 30 tests: data_quality, market_analysis, scenario, meeting, presentation, api (intégration HTTP)
 ```
+
+CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Linux), puis exécution réelle de
+`setup.ps1` / `test.ps1` / `start.ps1` / `stop.ps1` sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus)
+avec vérification HTTP du backend et du frontend et génération/téléchargement d'un PPTX de bout en bout.
 
 Via VS Code: Onglet Testing -> ▶️
 

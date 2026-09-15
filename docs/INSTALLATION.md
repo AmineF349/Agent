@@ -133,7 +133,7 @@ curl http://localhost:8501
 cd backend
 pytest tests/ -v
 
-# Doit passer 18 tests (Windows : .\test.ps1)
+# Doit passer 30 tests (Windows : .\test.ps1)
 ```
 
 ## Troubleshooting

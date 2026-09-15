@@ -38,6 +38,11 @@ puis `start.cmd`, ou lancez :
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
+> ✅ **Validé automatiquement** : à chaque commit, la CI GitHub Actions exécute ces scripts sur des
+> runners `windows-latest` avec **Windows PowerShell 5.1** et **PowerShell 7**, Python 3.10 / 3.11 / 3.12,
+> ainsi que le mode `-Portable` (aucun Python préinstallé), puis vérifie le backend, le frontend et la
+> génération/téléchargement d'une présentation de bout en bout.
+
 ---
 
 ## 1. Prérequis
@@ -256,8 +261,15 @@ les surprises avec certains outils tiers. Évitez les dossiers synchronisés
 OneDrive pour `.venv` (lenteur, verrous de fichiers).
 
 ### Windows PowerShell 5.1 : accents mal affichés
-Cosmétique. Les scripts forcent l'UTF-8 (`PYTHONUTF8=1`) pour Python ; pour la
-console elle-même : `chcp 65001` ou utilisez Windows Terminal / PowerShell 7.
+Cosmétique. Les scripts forcent l'UTF-8 (`PYTHONUTF8=1`) pour Python et les logs
+de `-Background` sont écrits en UTF-8 avec BOM (lisibles par `Get-Content` et le
+Bloc-notes). Pour la console elle-même : `chcp 65001` ou utilisez Windows
+Terminal / PowerShell 7. Les fichiers générés (PPTX/DOCX/PDF) ont des noms ASCII
+(« Revue Marché » → `Revue_Marche_...`) pour éviter tout problème d'encodage.
+
+### `python -m pip install` : `TypeError: ForwardRef._evaluate() ... recursive_guard`
+Python ≥ 3.12.4 avec un ancien pydantic. Corrigé (pydantic 2.7.4 épinglé) :
+`git pull` puis `.\setup.ps1 -Force`.
 
 ---
 
