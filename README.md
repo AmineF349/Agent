@@ -64,6 +64,7 @@ Arrêt : `.\stop.ps1` — Tests : `.\test.ps1`
 > (aucune élévation UAC).
 
 📘 Guide complet : **[`docs/INSTALLATION_WINDOWS.md`](docs/INSTALLATION_WINDOWS.md)**
+🔍 Ce qui a été modifié et pourquoi : **[`MODIFICATIONS_WINDOWS.md`](MODIFICATIONS_WINDOWS.md)**
 
 ### 🐳 Docker Compose (optionnel)
 

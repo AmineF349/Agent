@@ -8,6 +8,9 @@ administrateur**.
 > n'utilisant que ce qu'un utilisateur standard a le droit de faire : écrire
 > dans son propre dossier, créer un environnement virtuel Python, écouter sur
 > `127.0.0.1`.
+>
+> 📄 **Liste détaillée des modifications apportées au dépôt, avec les preuves de
+> vérification : [`../MODIFICATIONS_WINDOWS.md`](../MODIFICATIONS_WINDOWS.md)**
 
 ---
 
