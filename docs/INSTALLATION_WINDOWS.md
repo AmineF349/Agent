@@ -139,7 +139,9 @@ localement :
 from backend.app.services.market_analysis_engine import MarketAnalysisEngine
 ```
 
-17 imports de ce type existent dans `frontend/pages/`. `backend` est un paquet
+16 imports de ce type existent dans `frontend/pages/` (5 dans Data Analysis, 4 dans
+Meeting Assistant, 3 dans Scenario Review, 2 dans Presentation Builder, 2 dans
+Knowledge Center). `backend` est un paquet
 d'espace de noms PEP 420 (il n'y a pas de `backend/__init__.py`) : ces imports
 ne fonctionnent **que si la racine du dépôt est dans `sys.path`**.
 
