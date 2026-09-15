@@ -120,10 +120,14 @@ jobs:
 
       - name: setup.ps1 est idempotent (2e passage = réutilisation du venv)
         run: |
-          $t = Measure-Command { .\setup.ps1 | Tee-Object -Variable out | Out-Host }
-          if ($LASTEXITCODE -ne 0) { throw "2e setup.ps1 a echoue" }
-          if (-not ($out -join "`n").Contains("reutilise")) { throw "Le venv existant n'a pas ete reutilise" }
-          Write-Host "Duree 2e passage : $([int]$t.TotalSeconds)s"
+          # Write-Host ecrit dans le flux Information (6) : on le fusionne pour pouvoir l'inspecter
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $out = & { .\setup.ps1 } 6>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out | Out-Host
+          if ($code -ne 0) { throw "2e setup.ps1 a echoue ($code)" }
+          if (-not (($out -join "`n") -match "reutilise")) { throw "Le venv existant n'a pas ete reutilise" }
+          Write-Host "Duree 2e passage : $([int]$sw.Elapsed.TotalSeconds)s"
 
       - name: setup.ps1 -Python <chemin explicite> -Force
         run: |
@@ -163,9 +167,11 @@ jobs:
 
       - name: start.ps1 relancé = réutilise les services actifs (pas d'erreur de port)
         run: |
-          .\start.ps1 -Background -NoBrowser | Tee-Object -Variable out | Out-Host
-          if ($LASTEXITCODE -ne 0) { throw "2e start.ps1 a echoue" }
-          if (-not ($out -join "`n").Contains("reutilise")) { throw "Les services actifs n'ont pas ete detectes" }
+          $out = & { .\start.ps1 -Background -NoBrowser } 6>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out | Out-Host
+          if ($code -ne 0) { throw "2e start.ps1 a echoue ($code)" }
+          if (-not (($out -join "`n") -match "reutilise")) { throw "Les services actifs n'ont pas ete detectes" }
 
       - name: stop.ps1 libère les ports
         run: |
@@ -196,6 +202,26 @@ jobs:
             Write-Host "===== $($_.Name) ====="
             Get-Content $_.FullName -Tail 60 -ErrorAction SilentlyContinue
           }
+
+      - name: Diagnostic en annotations (si échec)
+        if: failure()
+        run: |
+          function Publish-Annotation([string] $Title, [string] $Text) {
+            $t = $Text.Replace("%", "%25").Replace("`r", "").Replace("`n", "%0A")
+            if ($t.Length -gt 4000) { $t = $t.Substring($t.Length - 4000) }
+            Write-Host "::warning title=$Title::$t"
+          }
+          Get-ChildItem .\logs -File -ErrorAction SilentlyContinue | ForEach-Object {
+            Publish-Annotation "log $($_.Name)" ((Get-Content $_.FullName -Tail 50 -ErrorAction SilentlyContinue) -join "`n")
+          }
+          $state = @()
+          $state += "PS $($PSVersionTable.PSVersion) | venv: $(Test-Path .\.venv\Scripts\python.exe) | .env: $(Test-Path .\.env)"
+          $state += "Listening 8000/8501/8010/8511: " + ((Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in 8000, 8501, 8010, 8511 } | ForEach-Object { "$($_.LocalAddress):$($_.LocalPort) pid=$($_.OwningProcess)" }) -join ", ")
+          $state += "python procs: " + ((Get-Process -Name "python*", "pwsh", "powershell" -ErrorAction SilentlyContinue | ForEach-Object { "$($_.ProcessName)#$($_.Id)" }) -join " ")
+          Publish-Annotation "etat" ($state -join "`n")
+          # Rejoue setup.ps1 en capturant TOUT (Information + erreurs) pour voir ce qu'il affiche
+          $replay = & { .\setup.ps1 } *>&1 | ForEach-Object { "$_" }
+          Publish-Annotation "replay setup.ps1 (exit $LASTEXITCODE)" ($replay -join "`n")
 
   # ---------------------------------------------------------------------------
   # Mode "aucun Python sur le poste" : setup.ps1 -Portable télécharge le paquet
