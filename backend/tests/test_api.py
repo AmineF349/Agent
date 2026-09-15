@@ -88,12 +88,15 @@ def test_presentation_generate_list_download(client):
     assert body["slide_count"] >= 1
     assert set(body["download_urls"]) == {"pptx", "docx", "pdf"}
 
-    # Les fichiers sont écrits dans GENERATED_DIR (absolu), pas dans le répertoire courant
+    # Les fichiers sont écrits dans GENERATED_DIR (absolu), pas dans le répertoire courant,
+    # avec un nom ASCII (accents translittérés) : pas de mojibake selon la console/le proxy.
     for key in ("pptx_path", "docx_path", "pdf_path"):
         p = Path(body[key])
         assert p.is_absolute()
         assert p.parent == Path(client.generated_dir)
         assert p.exists()
+        assert p.name.isascii(), p.name
+        assert p.name.startswith("Revue_Marche_Electrique_FR_")
 
     r = client.get("/api/v1/presentation/files")
     assert r.status_code == 200

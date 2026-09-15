@@ -157,13 +157,23 @@ jobs:
 
           # Génération + téléchargement de bout en bout via l'API
           $body = @{ presentation_type = "COMEX"; title = "CI Windows Revue Marché"; slides = @(@{ title = "S1"; bullets = @("a", "b") }) } | ConvertTo-Json -Depth 5
-          $gen = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/presentation/generate" -Method Post -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 60
+          # Invoke-WebRequest + decodage UTF-8 explicite : sous Windows PowerShell 5.1,
+          # Invoke-RestMethod decode le JSON en ISO-8859-1 si le serveur n'annonce pas
+          # de charset (mojibake sur les accents) -> on lit les octets bruts.
+          $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8000/api/v1/presentation/generate" -Method Post -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) -UseBasicParsing -TimeoutSec 60
+          $ms = New-Object IO.MemoryStream; $resp.RawContentStream.CopyTo($ms)
+          $gen = [Text.Encoding]::UTF8.GetString($ms.ToArray()) | ConvertFrom-Json
           Write-Host "PPTX : $($gen.pptx_path)"
-          if (-not (Test-Path $gen.pptx_path)) { throw "PPTX non genere" }
+          if ($gen.pptx_path -match '[^\x00-\x7F]') { throw "Le nom du fichier genere contient des caracteres non-ASCII : $($gen.pptx_path)" }
+          if (-not (Test-Path -LiteralPath $gen.pptx_path)) { throw "PPTX non genere : $($gen.pptx_path)" }
           if (-not $gen.pptx_path.StartsWith((Resolve-Path .\backend\generated).Path)) { throw "PPTX hors de backend\generated : $($gen.pptx_path)" }
           $dl = Invoke-WebRequest -Uri ("http://127.0.0.1:8000" + $gen.download_urls.pptx) -UseBasicParsing -TimeoutSec 30
           if ($dl.StatusCode -ne 200 -or $dl.RawContentLength -lt 1000) { throw "Telechargement PPTX KO" }
           Write-Host "Telechargement OK ($($dl.RawContentLength) octets)"
+          # Liste des fichiers generes via l'API
+          $files = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/presentation/files?limit=5" -TimeoutSec 15
+          if ($files.count -lt 3) { throw "/files : $($files.count) fichier(s), 3 attendus" }
+          Write-Host "/files OK ($($files.count) fichiers dans $($files.directory))"
 
       - name: start.ps1 relancé = réutilise les services actifs (pas d'erreur de port)
         run: |
