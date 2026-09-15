@@ -47,7 +47,7 @@ jobs:
           python -m pytest tests/ -v --tb=short -p no:cacheprovider 2>&1 | tee pytest.log
         # Le rapport complet est aussi publié dans le résumé du job (lisible via l'API
         # même quand le téléchargement des logs bruts est bloqué par un proxy).
-      - name: Résumé pytest
+      - name: Résumé pytest (annotations lisibles via l'API)
         if: always()
         shell: bash
         working-directory: backend
@@ -64,6 +64,19 @@ jobs:
             echo '```'
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
+          # Chaque test en échec -> une annotation ::error (visible dans l'API check-runs)
+          grep -E "^(FAILED|ERROR) " pytest.log | head -20 | while read -r line; do
+            msg=$(printf '%s' "$line" | tr -d '\r' | cut -c1-900)
+            echo "::error title=pytest py${{ matrix.python }}::${msg}"
+          done
+          # Bloc "short test summary" + dernière trace -> annotation warning (multi-ligne encodée)
+          if grep -q "short test summary" pytest.log; then
+            summary=$(sed -n '/short test summary/,$p' pytest.log | head -40 | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g' | cut -c1-4000)
+            echo "::warning title=pytest summary py${{ matrix.python }}::${summary}"
+            trace=$(grep -nE "^E  " pytest.log | head -15 | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g' | cut -c1-4000)
+            [ -n "$trace" ] && echo "::warning title=pytest assertions py${{ matrix.python }}::${trace}"
+          fi
+          exit 0
 
   # ---------------------------------------------------------------------------
   # Le vrai test : les scripts PowerShell sur Windows, SANS droits admin,
