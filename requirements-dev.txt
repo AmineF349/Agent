@@ -1,0 +1,4 @@
+# Outils de developpement (optionnels) - installes par `.\setup.ps1 -Dev`
+pytest==8.3.5
+black==24.8.0
+flake8==7.1.1

@@ -1,0 +1,79 @@
+# =============================================================================
+# Power Market Intelligence Agent - Dependances (backend + frontend)
+# =============================================================================
+# Un seul environnement virtuel (.venv) pour le backend FastAPI et le frontend
+# Streamlit. Installe par setup.ps1 (Windows) / setup.sh (Linux, macOS) avec
+# `pip install --only-binary :all:` : uniquement des wheels precompilees,
+# aucune compilation, aucun compilateur C/C++ requis.
+#
+# Python supporte : 3.10, 3.11, 3.12 (64 bits). Python 3.13+ n'est PAS supporte
+# (numpy 1.26 / pandas 2.2.1 / pydantic-core n'ont pas de wheel).
+#
+# Aucune base de donnees ni service externe : persistance sur fichiers
+# (backend/generated, knowledge_base). Les APIs publiques (Energy-Charts,
+# Open-Meteo) et les LLM sont optionnels (fallback local).
+#
+# Notes de versions :
+#   - python-pptx 0.6.23 : 0.6.21 n'a pas de wheel et plante sur Python 3.10+
+#     (AttributeError collections.abc, fix #762).
+#   - pydantic 2.7.4 : 2.6.x plante sur Python >= 3.12.4
+#     (TypeError ForwardRef._evaluate ... recursive_guard).
+#   - uvicorn[standard] : uvloop est automatiquement exclu sous Windows
+#     (marqueur d'environnement) ; le rechargement utilise watchfiles.
+#
+# Reproductibilite : les dependances transitives sont verrouillees dans
+# constraints.txt (pip install -r requirements.txt -c constraints.txt), genere
+# par scripts/update_constraints.py. Installation hors-ligne : voir
+# scripts/make_wheelhouse.py et docs/INSTALLATION.md.
+# =============================================================================
+
+# --- Backend : API ---
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.4  # >=2.7.4 requis pour Python 3.12.4+ (ForwardRef._evaluate) ; wheels cp310-312
+pydantic-settings==2.1.0
+python-multipart==0.0.9
+python-dotenv==1.0.1
+
+# --- Data & Analysis ---
+pandas==2.2.1
+polars==0.20.22
+numpy==1.26.4
+scipy==1.12.0
+openpyxl==3.1.2
+
+# --- Visualisation ---
+plotly==5.19.0
+matplotlib==3.8.3
+
+# --- Generation de presentations (PPTX / DOCX / PDF) ---
+python-pptx==0.6.23
+python-docx==1.1.2
+reportlab==4.1.0
+Pillow==10.3.0
+
+# --- IA / Agent (fonctionne sans cle API : fallback local) ---
+langchain==0.1.12
+langchain-core==0.1.32
+langchain-community==0.0.28
+langgraph==0.0.26
+openai==1.30.0
+anthropic==0.28.0
+tiktoken==0.6.0
+
+# --- Connecteurs de donnees ---
+requests==2.31.0
+httpx==0.27.0
+entsoe-py==0.6.10
+
+# --- Utilitaires ---
+tenacity==8.2.3
+structlog==24.1.0
+orjson==3.9.15
+aiofiles==23.2.1
+chardet==5.2.0  # dependance de reportlab ; requests 2.31 exige chardet < 6 (sinon RequestsDependencyWarning)
+
+# --- Frontend : Streamlit ---
+streamlit==1.35.0
+streamlit-option-menu==0.3.12
+streamlit-extras==0.4.6

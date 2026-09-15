@@ -5,7 +5,10 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red.svg)](https://streamlit.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
+[![CI](https://github.com/AmineF349/Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/AmineF349/Agent/actions/workflows/ci.yml)
+[![Windows](https://img.shields.io/badge/Windows-natif%2C%20sans%20admin-0078D6.svg)](docs/WINDOWS_SETUP.md)
+[![Linux%20%7C%20macOS](https://img.shields.io/badge/Linux%20%7C%20macOS-setup.sh-333.svg)](docs/INSTALLATION.md)
+[![No Docker](https://img.shields.io/badge/Docker-non%20requis-success.svg)](docs/INSTALLATION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -32,14 +35,36 @@ Aider à:
 
 ---
 
-## 🚀 Quick Start (1 commande)
+## 🚀 Quick Start
+
+**100 % natif** : deux processus Python sur votre poste, un seul environnement virtuel, aucune base de données,
+aucun Docker, aucun droit administrateur, aucune compilation.
+
+### 🪟 Windows (recommandé sur poste d'entreprise)
+
+```powershell
+git clone https://github.com/AmineF349/Agent.git
+cd Agent
+.\setup.ps1      # une seule fois : détecte/installe Python 3.11, crée .venv, installe les dépendances
+.\start.ps1      # lance backend + frontend et ouvre http://localhost:8501
+.\stop.ps1       # arrête tout
+```
+
+- Si PowerShell bloque les scripts : `powershell -ExecutionPolicy Bypass -File .\setup.ps1` ou double-clic sur `setup.cmd` / `start.cmd`.
+- Pas de Python sur le poste ? `setup.ps1` propose de l'installer **sans admin** (installeur « pour moi uniquement » ou Python portable dans `.\.python\`).
+- Guide complet + dépannage proxy / politique d'exécution : **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**.
+
+### 🐧 Linux / 🍎 macOS
 
 ```bash
-git clone <repo_url>
+git clone https://github.com/AmineF349/Agent.git
 cd Agent
-cp .env.example .env   # Optionnel, fonctionne sans clé
-docker-compose up --build
+./setup.sh       # Python 3.10-3.12 détecté, .venv, dépendances, .env
+./start.sh       # backend + frontend en arrière-plan (logs dans ./logs/), ouvre le navigateur
+./stop.sh
 ```
+
+Validé en continu par la CI : Ubuntu, macOS et Windows (PowerShell 5.1 et 7), Python 3.10 / 3.11 / 3.12.
 
 **Accès:**
 - Frontend: http://localhost:8501
@@ -135,17 +160,16 @@ Frontend (Streamlit) ──HTTP──> Backend (FastAPI)
                                                  ENTSO-E (optional)
                                                  Mock (fallback)
                     │
-              ┌─────┼─────┐
-              ▼     ▼     ▼
-           Postgres SQLite Files
+                    ▼
+          Fichiers (backend/generated, knowledge_base)
 ```
 
 **Stack**:
-- Backend: Python 3.11, FastAPI, Pandas/Polars, Plotly, LangChain/LangGraph, python-pptx/docx, reportlab
+- Backend: Python 3.10-3.12, FastAPI, Pandas/Polars, Plotly, LangChain/LangGraph, python-pptx/docx, reportlab
 - Frontend: Streamlit, Plotly, requests
 - Data: Energy-Charts.info (gratuit, sans clé), Open-Meteo (gratuit, sans clé), ENTSO-E (optionnel, clé gratuite), Mock fallback
 - IA: OpenAI/Claude/Azure OpenAI (optionnel) + Fallback local templates experts (100% fonctionnel sans clé)
-- Infra: Docker Compose, Postgres/SQLite, VS Code config
+- Infra: scripts d'installation/lancement natifs (`setup.ps1` / `start.ps1` Windows, `setup.sh` / `start.sh` Linux-macOS), un seul `.venv`, VS Code config, CI GitHub Actions. Aucune base de données, aucun Docker (stockage fichiers)
 
 Voir `ARCHITECTURE.md` pour détails.
 
@@ -200,21 +224,20 @@ Sinon, tout marche en mode fallback.
 │   │   ├── data/repositories/ (file_repo)
 │   │   ├── models/ (schemas, domain)
 │   │   └── agent/ (llm_provider, langgraph_agent, prompts)
-│   ├── tests/ (5 fichiers, 15+ tests)
-│   ├── data_samples/ (sample_prices.csv, sample_renewable.csv, sample_scenario.json)
-│   └── requirements.txt
+│   ├── tests/ (6 fichiers, 30 tests)
+│   └── data_samples/ (sample_prices.csv, sample_renewable.csv, sample_scenario.json)
 ├── frontend/
 │   ├── app.py (main Streamlit)
 │   ├── pages/ (Dashboard, Data Analysis, Scenario Review, Presentation Builder, Meeting Assistant, Knowledge Center)
 │   ├── components/ (charts, cards, sidebar)
-│   ├── utils/ (api_client)
-│   └── requirements.txt
+│   └── utils/ (api_client, paths)
 ├── knowledge_base/
 │   ├── concepts/ (capture_rate, baseload_peakload, negative_hours, bess, interconnectors)
 │   ├── models/ (afry_bid3, aurora, assumptions)
 │   └── faq.md
 ├── docs/
 │   ├── INSTALLATION.md
+│   ├── WINDOWS_SETUP.md (Windows sans droits admin)
 │   ├── VSCODE_GUIDE.md
 │   ├── API_DOCS.md
 │   └── USER_GUIDE.md
@@ -223,9 +246,14 @@ Sinon, tout marche en mode fallback.
 │   ├── launch.json
 │   ├── tasks.json
 │   └── extensions.json
-├── docker-compose.yml
-├── Dockerfile.backend
-├── Dockerfile.frontend
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 / doctor.ps1   (Windows)
+├── setup.cmd / start.cmd / stop.cmd / doctor.cmd               (double-clic, contourne ExecutionPolicy)
+├── setup.sh / start.sh / stop.sh / test.sh / doctor.sh        (Linux / macOS)
+├── scripts/ (check_install.py, doctor.py, run_logged.py, make_wheelhouse.py, update_constraints.py, windows/, unix/)
+├── requirements.txt (backend + frontend, wheels précompilées uniquement)
+├── requirements-dev.txt
+├── constraints.txt (verrou des dépendances transitives, toutes plateformes)
+├── .github/workflows/ci.yml (Ubuntu + macOS + Windows)
 ├── .env.example
 ├── ARCHITECTURE.md
 ├── ROADMAP.md
@@ -236,26 +264,65 @@ Sinon, tout marche en mode fallback.
 
 ## 🛠️ Installation
 
-### Option 1: Docker (Recommandé)
+Prérequis : **Python 3.10, 3.11 ou 3.12 (64 bits)** — c'est tout. Pas de Docker, pas de base de données,
+pas de compilateur (toutes les dépendances sont installées en wheels précompilées, `--only-binary :all:`).
 
-```bash
-cp .env.example .env
-docker-compose up --build
-# Frontend http://localhost:8501, Backend http://localhost:8000/docs
+### Windows
+
+```powershell
+.\setup.ps1        # ajoutez -Dev pour pytest/black/flake8
+.\start.ps1
 ```
 
-### Option 2: Local
+| Script | Rôle |
+|--------|------|
+| `setup.ps1` | Détecte Python 3.10-3.12 (ou l'installe sans admin), crée `.venv`, installe `requirements.txt` (+ `constraints.txt`), crée `.env`, vérifie l'installation. Options : `-Dev`, `-Force`, `-Python <exe>`, `-Portable`, `-Offline` (wheelhouse local, zéro réseau) |
+| `start.ps1` | Lance backend (uvicorn :8000) + frontend (Streamlit :8501) dans deux fenêtres, attend `/health`, ouvre le navigateur. Options : `-Background`, `-BackendPort`, `-FrontendPort`, `-NoBrowser`, `-BackendOnly`, `-FrontendOnly`, `-NoReload` |
+| `stop.ps1` | Arrête proprement les deux services |
+| `test.ps1` | Lance `pytest` |
+| `doctor.ps1` | Diagnostic en lecture seule : Python, paquets vs `constraints.txt`, `.env`/ports, services, réseau. À joindre à toute demande d'aide |
+
+Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
+
+### Linux / macOS
 
 ```bash
+./setup.sh         # --dev, --force, --python /chemin/python3.11, --offline
+./start.sh         # --foreground, --backend-port, --frontend-port, --no-browser, --backend-only, --frontend-only
+./stop.sh
+./test.sh
+./doctor.sh        # diagnostic (Python, paquets, .env, ports, services, réseau)
+```
+
+Pas de Python 3.10-3.12 ? Sans droits root : `curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.11`
+puis `./setup.sh --python "$(uv python find 3.11)"`.
+
+### Poste sans accès à PyPI (hors-ligne)
+
+```bash
+python scripts/make_wheelhouse.py --platform win_amd64 --python-version 3.11 --zip   # sur un poste connecté (n'importe quel OS)
+# copier wheelhouse/ à la racine du projet sur le poste cible, puis :
+.\setup.ps1 -Offline      # ou ./setup.sh --offline  -> pip --no-index, zéro réseau
+```
+
+Le wheelhouse est propre à une plateforme et à une version de Python : `setup.*` le lit, choisit un
+Python couvert et refuse explicitement en hors-ligne un `.venv`/Python non couvert.
+
+Les dépendances indirectes sont figées dans `constraints.txt` (résolution universelle Windows/Linux/macOS,
+Python 3.10-3.12) : le même environnement partout, sans image Docker. Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
+### Manuel (toutes plateformes)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows : .\.venv\Scripts\Activate.ps1
+pip install --only-binary :all: -r requirements.txt -c constraints.txt
+
 # Backend
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+cd backend && uvicorn app.main:app --reload --port 8000
 
 # Frontend (autre terminal)
-cd frontend
-pip install -r requirements.txt
-streamlit run app.py --port 8501
+cd frontend && BACKEND_URL=http://localhost:8000 streamlit run app.py --server.port 8501
 ```
 
 Voir `docs/INSTALLATION.md` pour détails + troubleshooting.
@@ -264,10 +331,11 @@ Voir `docs/INSTALLATION.md` pour détails + troubleshooting.
 
 ## 💻 VS Code
 
-1. Ouvrir dossier `Agent` dans VS Code
+1. Ouvrir dossier `Agent` dans VS Code (après `.\setup.ps1` : l'interpréteur `.venv` est présélectionné)
 2. Installer extensions recommandées (popup)
 3. `F5` -> Choisir "Backend FastAPI" ou "Frontend Streamlit" ou "Backend + Frontend (Compound)"
-4. Breakpoints, debug, tests via UI Testing
+4. Tâches `Terminal > Run Task` : `Windows: Setup / Start / Stop / Tests`
+5. Breakpoints, debug, tests via UI Testing
 
 Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensions, workflow).
 
@@ -275,11 +343,20 @@ Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensi
 
 ## 🧪 Tests
 
-```bash
-cd backend
-pytest tests/ -v
-# 15+ tests: data_quality, market_analysis, scenario, meeting, presentation
+```powershell
+.\test.ps1            # Windows
 ```
+```bash
+./test.sh             # Linux / macOS  (ou : cd backend && pytest tests/ -v)
+# 30 tests: data_quality, market_analysis, scenario, meeting, presentation, api (intégration HTTP)
+```
+
+CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Ubuntu), puis exécution réelle des scripts
+d'installation et de lancement : `setup.sh` / `start.sh` / `stop.sh` sur Ubuntu et macOS, `setup.ps1` / `start.ps1` / `stop.ps1`
+sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus), avec vérification HTTP du backend et du frontend,
+génération/téléchargement d'un PPTX de bout en bout, et installation **hors-ligne** (wheelhouse + `--offline` / `-Offline`
+avec réseau coupé, y compris le refus d'un wheelhouse prévu pour un autre Python). La CI vérifie aussi que
+`constraints.txt` est à jour et lance `doctor.py` sur chaque plateforme.
 
 Via VS Code: Onglet Testing -> ▶️
 
@@ -290,7 +367,8 @@ Via VS Code: Onglet Testing -> ▶️
 - `README.md` (ce fichier) - Overview
 - `ARCHITECTURE.md` - Architecture détaillée + diagramme + choix techniques
 - `ROADMAP.md` - Roadmap v1.1, v1.2, v2.0...
-- `docs/INSTALLATION.md` - Installation Docker/local + troubleshooting
+- `docs/INSTALLATION.md` - Installation Linux / macOS / manuelle + troubleshooting
+- `docs/WINDOWS_SETUP.md` - Windows sans droits admin (setup.ps1 / start.ps1), dépannage proxy
 - `docs/VSCODE_GUIDE.md` - Guide VS Code dev
 - `docs/API_DOCS.md` - API endpoints + exemples curl
 - `docs/USER_GUIDE.md` - Guide utilisateur analyste sans dev
@@ -333,10 +411,10 @@ Voir `docs/USER_GUIDE.md` pour workflows détaillés.
 
 ## 🤝 Contribution
 
-1. Fork, branch `feature/ma-feature` (toujours depuis `arena/01a09f1d-agent` pour cette session)
+1. Fork, branch `feature/ma-feature`
 2. Code + tests + docs
 3. `black backend/` + `flake8` + `pytest`
-4. Commit + push sur `arena/01a09f1d-agent`
+4. Commit + push
 5. PR
 
 ---

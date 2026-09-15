@@ -16,7 +16,7 @@
 - ✅ FastAPI backend + Streamlit frontend
 - ✅ LangGraph agent + LLM provider (OpenAI/Claude/Azure/Local fallback)
 - ✅ Public APIs gratuites (Energy-Charts, Open-Meteo) + ENTSO-E optional + Mock fallback
-- ✅ Docker Compose + VS Code config
+- ✅ Installation 100 % native (Windows sans admin : setup.ps1/start.ps1 ; Linux/macOS : setup.sh/start.sh), dépendances verrouillées (constraints.txt), installation hors-ligne (wheelhouse) + VS Code config
 - ✅ Tests (15+ tests)
 - ✅ Docs (INSTALLATION, VSCODE_GUIDE, API_DOCS, USER_GUIDE, ARCHITECTURE)
 
@@ -125,7 +125,7 @@ Voir CONTRIBUTING.md (à venir) - fork, branch, PR.
 ## Changelog
 
 ### v1.0.0 (Sept 2024)
-- Initial release, 6 modules, Docker, VS Code, tests, docs
+- Initial release, 6 modules, scripts d'installation natifs, VS Code, tests, docs
 - 100% fonctionnel sans clé API
 - APIs publiques gratuites Energy-Charts + Open-Meteo
 - Fallback local LLM

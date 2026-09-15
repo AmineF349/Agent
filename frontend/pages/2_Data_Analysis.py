@@ -4,6 +4,8 @@ import numpy as np
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports, GENERATED_DIR, DATA_SAMPLES_DIR, KNOWLEDGE_BASE_DIR
+enable_backend_imports()  # autorise `from backend.app...` quel que soit le répertoire courant
 from components.charts import price_timeseries_chart, price_histogram, capture_rate_gauge
 import plotly.graph_objects as go
 
@@ -25,9 +27,7 @@ with tab1:
     col1, col2 = st.columns([1,1])
     with col1:
         if st.button("Utiliser sample_prices.csv"):
-            sample_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", "data_samples", "sample_prices.csv")
-            if not os.path.exists(sample_path):
-                sample_path = "backend/data_samples/sample_prices.csv"
+            sample_path = str(DATA_SAMPLES_DIR / "sample_prices.csv")
             try:
                 df = pd.read_csv(sample_path)
                 st.dataframe(df.head(20))

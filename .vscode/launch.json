@@ -12,13 +12,16 @@
                 "--port",
                 "8000",
                 "--host",
-                "0.0.0.0"
+                "127.0.0.1"
             ],
             "cwd": "${workspaceFolder}/backend",
+            "python": "${command:python.interpreterPath}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
+                "PYTHONPATH": "${workspaceFolder}/backend",
+                "PYTHONUTF8": "1"
             },
-            "jinja": true
+            "jinja": true,
+            "console": "integratedTerminal"
         },
         {
             "name": "Frontend Streamlit",
@@ -31,13 +34,19 @@
                 "--server.port",
                 "8501",
                 "--server.address",
-                "0.0.0.0"
+                "127.0.0.1",
+                "--server.headless",
+                "true"
             ],
             "cwd": "${workspaceFolder}/frontend",
+            "python": "${command:python.interpreterPath}",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/frontend",
-                "BACKEND_URL": "http://localhost:8000"
-            }
+                "PYTHONUTF8": "1",
+                "BACKEND_URL": "http://localhost:8000",
+                "NO_PROXY": "localhost,127.0.0.1"
+            },
+            "console": "integratedTerminal"
         },
         {
             "name": "Backend + Frontend (Compound)",
@@ -50,13 +59,16 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "backend/tests",
+                "tests",
                 "-v"
             ],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${command:python.interpreterPath}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
-            }
+                "PYTHONPATH": "${workspaceFolder}/backend",
+                "PYTHONUTF8": "1"
+            },
+            "console": "integratedTerminal"
         },
         {
             "name": "Test Data Quality",
@@ -64,10 +76,13 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "backend/tests/test_data_quality.py",
+                "tests/test_data_quality.py",
                 "-v"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${command:python.interpreterPath}",
+            "env": { "PYTHONPATH": "${workspaceFolder}/backend", "PYTHONUTF8": "1" },
+            "console": "integratedTerminal"
         },
         {
             "name": "Test Market Analysis",
@@ -75,10 +90,13 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "backend/tests/test_market_analysis.py",
+                "tests/test_market_analysis.py",
                 "-v"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${command:python.interpreterPath}",
+            "env": { "PYTHONPATH": "${workspaceFolder}/backend", "PYTHONUTF8": "1" },
+            "console": "integratedTerminal"
         }
     ]
 }

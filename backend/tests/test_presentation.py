@@ -4,8 +4,9 @@ from pathlib import Path
 from app.services.presentation_generator import PresentationGenerator
 from app.models.schemas import PresentationRequest, SlideContent
 
-def test_presentation_generator():
-    gen = PresentationGenerator(output_dir="/tmp/test_generated")
+def test_presentation_generator(tmp_path):
+    # tmp_path (fixture pytest) est portable Windows/Linux/macOS, contrairement à /tmp
+    gen = PresentationGenerator(output_dir=str(tmp_path / "test_generated"))
     req = PresentationRequest(
         presentation_type="Management",
         title="Test Presentation",
@@ -36,3 +37,12 @@ def test_presentation_colors():
     gen = PresentationGenerator()
     assert "primary" in gen.COLORS
     assert "secondary" in gen.COLORS
+
+
+def test_safe_filename_ascii():
+    gen = PresentationGenerator
+    assert gen.safe_filename("Revue Marché Électrique FR 2030") == "Revue_Marche_Electrique_FR_2030"
+    assert gen.safe_filename("Œuvre & Cœur – Prix €/MWh") == "Oeuvre_and_Coeur_Prix_EUR_MWh"
+    assert gen.safe_filename("   ") == "presentation"
+    assert len(gen.safe_filename("x" * 100)) == 40
+    assert gen.safe_filename("a/b\\c:d*e?f").isascii()

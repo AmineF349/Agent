@@ -41,13 +41,11 @@ frontend/generated/
 *.log
 logs/
 
-# DB
-*.db
-*.sqlite
-*.sqlite3
-
-# Docker
-postgres_data/
+# Installation native (setup.ps1 / setup.sh)
+.python/
+.python-extract/
+wheelhouse/
+wheelhouse.zip
 
 # Testing
 .pytest_cache/

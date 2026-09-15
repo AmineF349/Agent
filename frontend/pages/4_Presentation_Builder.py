@@ -2,6 +2,8 @@ import streamlit as st
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
+from utils.paths import enable_backend_imports, GENERATED_DIR, DATA_SAMPLES_DIR, KNOWLEDGE_BASE_DIR
+enable_backend_imports()  # autorise `from backend.app...` quel que soit le répertoire courant
 import json
 
 st.set_page_config(page_title="Presentation Builder", page_icon="📑", layout="wide")
@@ -68,13 +70,13 @@ with tab1:
                 st.success(f"Généré: {result.pptx_path} | {result.slide_count} slides")
                 st.json(result.model_dump() if hasattr(result, 'model_dump') else result.__dict__)
 
-                # Show download links
-                st.markdown(f"**Fichiers générés dans** `backend/generated/` ou `generated/`")
-                # List files
-                import glob
-                files = glob.glob("generated/*") + glob.glob("backend/generated/*") + glob.glob("/app/generated/*")
-                for f in files[-5:]:
-                    st.markdown(f"- {f}")
+                # Boutons de téléchargement directs
+                st.markdown(f"**Fichiers générés dans** `{GENERATED_DIR}`")
+                dl_cols = st.columns(3)
+                for col, (label, path) in zip(dl_cols, [("PPTX", result.pptx_path), ("DOCX", result.docx_path), ("PDF", result.pdf_path)]):
+                    if path and os.path.exists(path):
+                        with open(path, "rb") as fh:
+                            col.download_button(f"⬇️ {label}", data=fh.read(), file_name=os.path.basename(path), key=f"dl_{label}_{os.path.basename(path)}")
 
             except Exception as e:
                 st.warning(f"Direct failed {e}, trying API")
@@ -100,17 +102,15 @@ with tab1:
 
 with tab2:
     st.subheader("📂 Fichiers Générés")
-    import glob, os
-    patterns = ["generated/*", "backend/generated/*", "/tmp/generated/*", "frontend/generated/*"]
-    files = []
-    for pat in patterns:
-        files.extend(glob.glob(pat))
+    from datetime import datetime
+    st.caption(f"Dossier: `{GENERATED_DIR}`")
+    files = [p for p in GENERATED_DIR.glob("*") if p.is_file() and p.suffix in (".pptx", ".docx", ".pdf")] if GENERATED_DIR.exists() else []
     if files:
-        for f in sorted(files, key=os.path.getmtime, reverse=True)[:20]:
-            st.markdown(f"- {f} | {os.path.getsize(f)} bytes | {os.path.getmtime(f)}")
-            if st.button(f"Télécharger {os.path.basename(f)}", key=f):
-                with open(f, "rb") as file:
-                    st.download_button(label="Download", data=file, file_name=os.path.basename(f))
+        for p in sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)[:20]:
+            c1, c2 = st.columns([4, 1])
+            mtime = datetime.fromtimestamp(p.stat().st_mtime).strftime("%d/%m/%Y %H:%M:%S")
+            c1.markdown(f"- **{p.name}** | {p.stat().st_size:,} octets | {mtime}")
+            with open(p, "rb") as fh:
+                c2.download_button("⬇️ Télécharger", data=fh.read(), file_name=p.name, key=f"dl_{p.name}")
     else:
         st.info("Aucun fichier généré encore - lancez génération dans onglet Générateur")
-        st.markdown("Chemins cherchés: generated/, backend/generated/")

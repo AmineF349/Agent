@@ -7,6 +7,8 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import re
+import unicodedata
 from pathlib import Path
 
 from pptx import Presentation
@@ -15,6 +17,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 
 from ..models.schemas import PresentationRequest, PresentationResponse, SlideContent
+from ..core.paths import GENERATED_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +38,30 @@ class PresentationGenerator:
         "light_gray": RGBColor(0xF2, 0xF2, 0xF2)
     }
 
-    def __init__(self, output_dir: str = "generated"):
-        self.output_dir = Path(output_dir)
+    def __init__(self, output_dir: Optional[str] = None):
+        # Par défaut : <repo>/backend/generated (chemin absolu, indépendant du CWD)
+        self.output_dir = Path(output_dir) if output_dir else GENERATED_DIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def safe_filename(title: str, max_len: int = 40) -> str:
+        """
+        Nom de fichier ASCII sûr : accents translittérés (é->e, œ->oe...), tout le
+        reste remplacé par '_', sans répétitions. Évite les noms non-ASCII qui posent
+        problème selon la console/le proxy (mojibake), SharePoint, Outlook, URLs.
+        """
+        replacements = {"œ": "oe", "Œ": "Oe", "æ": "ae", "Æ": "Ae", "ß": "ss", "ø": "o", "Ø": "O", "€": "EUR", "&": "and"}
+        text = "".join(replacements.get(c, c) for c in title)
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        text = re.sub(r"[^A-Za-z0-9]+", "_", text).strip("_")
+        return (text or "presentation")[:max_len].rstrip("_")
 
     def generate(self, request: PresentationRequest) -> PresentationResponse:
         """
         Génère PPTX + DOCX + PDF selon type
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c if c.isalnum() else "_" for c in request.title)[:30]
-        base_name = f"{safe_title}_{timestamp}"
+        base_name = f"{self.safe_filename(request.title)}_{timestamp}"
 
         pptx_path = self.output_dir / f"{base_name}.pptx"
         docx_path = self.output_dir / f"{base_name}.docx"
@@ -60,12 +76,18 @@ class PresentationGenerator:
         # Generate PDF from PPTX (via reportlab fallback - simple PDF)
         self._generate_pdf(request, pdf_path)
 
+        download_prefix = "/api/v1/presentation/download/"
         return PresentationResponse(
             pptx_path=str(pptx_path),
             docx_path=str(docx_path),
             pdf_path=str(pdf_path),
             slide_count=len(request.slides) + (3 if request.include_toc else 2),  # + title + toc + end
-            message=f"Présentation {request.presentation_type} générée: {request.title}"
+            message=f"Présentation {request.presentation_type} générée: {request.title}",
+            download_urls={
+                "pptx": download_prefix + pptx_path.name,
+                "docx": download_prefix + docx_path.name,
+                "pdf": download_prefix + pdf_path.name,
+            }
         )
 
     def _generate_pptx(self, request: PresentationRequest, output_path: Path):

@@ -37,12 +37,12 @@
 │  └──────────────────────────────────────────────────────────┘   │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-        ┌──────────┐ ┌──────────┐ ┌──────────┐
-        │ Postgres │ │  SQLite  │ │  Files   │
-        │ (Docker) │ │ (local)  │ │ generated│
-        └──────────┘ └──────────┘ └──────────┘
+                           ▼
+                ┌────────────────────┐
+                │ Persistance fichiers│
+                │ backend/generated/  │
+                │ knowledge_base/*.md │
+                └────────────────────┘
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
@@ -64,13 +64,13 @@
 
 ### Backend
 
-- **Framework**: FastAPI 0.110 (Python 3.11)
+- **Framework**: FastAPI 0.110 (Python 3.10 - 3.12)
 - **Data**: Pandas 2.2, Polars 0.20, Numpy 1.26, Scipy 1.12
 - **IA**: LangChain 0.1, LangGraph 0.0, OpenAI 1.30, Anthropic 0.28, tiktoken
 - **Visu**: Plotly 5.19, Matplotlib 3.8
 - **Presentation**: python-pptx 0.6, python-docx 1.1, reportlab 4.1
 - **Connectors**: requests, httpx, entsoe-py 0.6
-- **DB**: SQLAlchemy 2.0, psycopg2, alembic
+- **Persistance**: fichiers (aucune base de données)
 - **Utils**: tenacity, structlog, orjson, aiofiles
 
 ### Frontend
@@ -82,8 +82,15 @@
 
 ### Infra
 
-- **Docker**: Dockerfile.backend, Dockerfile.frontend, docker-compose.yml
-- **DB**: Postgres 15 (Docker) ou SQLite (local)
+- **100 % natif, sans Docker** : un seul `.venv` (backend + frontend) créé à partir de `requirements.txt` (wheels précompilées uniquement, Python 3.10-3.12 64 bits)
+- **Reproductibilité** : `constraints.txt` = résolution universelle (Windows/Linux/macOS × Python 3.10-3.12) de toutes les dépendances transitives, générée par `scripts/update_constraints.py` (uv) et vérifiée par la CI ; c'est l'équivalent « natif » d'une image figée
+- **Hors-ligne** : `scripts/make_wheelhouse.py` télécharge les wheels d'une plateforme cible (cross-OS) dans `wheelhouse/` ; `setup.ps1 -Offline` / `setup.sh --offline` installent en `pip --no-index --find-links`
+- **Windows (sans admin)** : `setup.ps1`, `start.ps1`, `stop.ps1`, `test.ps1` + `scripts/windows/common.ps1` (lanceurs `.cmd` pour le double-clic)
+- **Linux / macOS** : `setup.sh`, `start.sh`, `stop.sh`, `test.sh` + `scripts/unix/common.sh`
+- **Communs** : `scripts/check_install.py` (vérification post-installation), `scripts/run_logged.py` (lancement d'un service avec stdout+stderr fusionnés dans `logs/*.log`)
+- **Persistance**: fichiers uniquement (`backend/generated/`, `knowledge_base/`). Aucune base de données, aucun service tiers à installer.
+- **CI** : `.github/workflows/ci.yml` — pytest Ubuntu 3.10/3.11/3.12, puis exécution réelle des scripts sur Ubuntu, macOS et Windows (PS 5.1 + PS 7, Python portable)
+- **Chemins**: résolus de façon absolue par `backend/app/core/paths.py` et `frontend/utils/paths.py` (surcharge via `GENERATED_DIR`, `KNOWLEDGE_BASE_DIR`, `DATA_SAMPLES_DIR`, `PMIA_ENV_FILE`) → indépendance du répertoire courant
 - **IDE**: VS Code avec settings, launch, tasks, extensions
 
 ## Modules Détail
@@ -400,33 +407,54 @@
 
 - `api_client.py`: APIClient class avec methods health, market_analysis, data_quality_csv, challenge_scenario, prepare_meeting, generate_minutes, generate_presentation, knowledge_search, fetch_market_data, live_prices, agent_chat, bess_revenue
 
-## Docker
+## Lancement natif
 
-**Dockerfile.backend**:
-- python:3.11-slim, build-essential, libpq-dev, requirements.txt, app code, generated folder, uvicorn
+### Windows (`start.ps1`)
 
-**Dockerfile.frontend**:
-- python:3.11-slim, requirements.txt, app code, streamlit
+```
+start.ps1 ──► powershell.exe  .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   (cwd backend/)
+          ──► attend GET /health
+          ──► powershell.exe  .venv\Scripts\python.exe -m streamlit run app.py --server.port 8501                      (cwd frontend/)
+          ──► attend GET /_stcore/health, ouvre le navigateur, écrit logs/pids.json
+stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/8501 s'ils sont tenus par un python du .venv
+```
 
-**docker-compose.yml**:
-- postgres:15-alpine, healthcheck, volume postgres_data
-- backend: build Dockerfile.backend, port 8000, env_file .env, volumes backend, knowledge_base, generated, depends_on postgres healthy, DATABASE_URL
-- frontend: build Dockerfile.frontend, port 8501, env_file .env, volumes frontend, depends_on backend, BACKEND_URL=http://backend:8000
-- volumes: postgres_data, backend_generated
+- `setup.ps1` : détection Python 3.10-3.12 x64 (py launcher, PATH, LocalAppData, conda, scoop, `.python\`) → sinon installation « pour moi uniquement » (python.org, `InstallAllUsers=0`) ou Python portable (paquet nuget PSF extrait dans `.python\`) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements.txt` → `.env` → `scripts/check_install.py`.
+- `-Background` : les services sont lancés sans fenêtre via `scripts/run_logged.py` (logs dans `logs\backend.log` / `logs\frontend.log`).
+
+### Linux / macOS (`start.sh`)
+
+```
+start.sh  ──► .venv/bin/python scripts/run_logged.py logs/backend.log  -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   (cwd backend/)
+          ──► attend GET /health
+          ──► .venv/bin/python scripts/run_logged.py logs/frontend.log -m streamlit run app.py --server.port 8501                      (cwd frontend/)
+          ──► attend GET /_stcore/health, ouvre le navigateur (xdg-open / open), écrit logs/pids.env
+stop.sh   ──► SIGTERM sur les groupes de processus enregistrés + libère 8000/8501 s'ils sont tenus par un python du .venv (SIGKILL après 3 s)
+```
+
+- `setup.sh` : détection Python 3.10-3.12 64 bits (`python3.11` > `python3.12` > `python3.10`, pyenv, Homebrew, uv, conda) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements.txt` → `.env` → `scripts/check_install.py`. Options `--python`, `--dev`, `--force`.
+- `run_logged.py` se détache dans sa propre session (`os.setsid`) : les services survivent à la fermeture du terminal ; `./start.sh --foreground` garde la main et arrête tout sur Ctrl+C.
+
+### Commun aux deux plateformes
+
+- Variables positionnées au lancement : `BACKEND_URL`, `PYTHONUTF8=1`, `NO_PROXY=localhost,127.0.0.1`, `STREAMLIT_SERVER_HEADLESS=true`.
+- Les services écoutent sur 127.0.0.1 uniquement (aucune règle pare-feu / élévation).
+- `/health` ne bloque pas sur les APIs publiques : sonde en arrière-plan avec cache (`?sync=true` pour forcer).
+- Relancer `start` alors que les services tournent ne provoque pas d'erreur : les services sains sont réutilisés.
 
 ## VS Code
 
 **.vscode/settings.json**:
-- python.defaultInterpreterPath .venv/bin/python, linting flake8, formatting black, testing pytest backend/tests, PYTHONPATH
+- python.defaultInterpreterPath `${workspaceFolder}/.venv/Scripts/python.exe`, linting flake8, formatting black, testing pytest backend/tests, PYTHONPATH/PYTHONUTF8/BACKEND_URL/NO_PROXY dans le terminal intégré
 
 **.vscode/launch.json**:
 - Backend FastAPI (uvicorn), Frontend Streamlit, Compound, Pytest All, Test Data Quality, Test Market Analysis
 
 **.vscode/tasks.json**:
-- Install Backend/Frontend/All, Run Backend/Frontend, Docker Compose Up, Run Tests, Lint Backend
+- Setup/Start/Stop/Tests (scripts PowerShell sous Windows), Run Backend/Frontend/Tests (venv), Lint Backend. Sous Linux/macOS, utiliser les scripts `.sh` dans le terminal intégré.
 
 **.vscode/extensions.json**:
-- Python, Pylance, Black, Flake8, Docker, YAML, Prettier, Jupyter, Copilot
+- Python, Pylance, Black, Flake8, PowerShell, YAML, Prettier, Jupyter, Copilot
 
 ## Tests
 
@@ -513,9 +541,12 @@
 - Interactif, beau, Streamlit compatible
 - vs Matplotlib: plus moderne
 
-**Docker Compose**:
-- 1 commande pour tout lancer, reproducibilité
-- Postgres pour prod, SQLite fallback local
+**Scripts natifs plutôt que Docker**:
+- Docker Desktop est souvent interdit sur les postes d'entreprise (et exige des droits admin / WSL2) : le projet n'en dépend plus du tout
+- Tout tient dans un `.venv` : aucune installation système, aucune élévation, désinstallation = suppression du dossier
+- `--only-binary :all:` garantit l'absence de compilation (pas de Visual C++ Build Tools / gcc) ; Python 3.10-3.12 64 bits requis pour disposer des wheels
+- Mêmes étapes et même `requirements.txt` sur Windows (`.ps1`) et Linux/macOS (`.sh`) ; la reproductibilité qu'apportait une image Docker est assurée par `constraints.txt` (toutes les versions figées, toutes plateformes) et la CI multi-OS
+- Les postes sans accès à PyPI sont couverts par le wheelhouse (préparé sur un poste connecté, quel que soit son OS)
 
 **VS Code config**:
 - Pour dev local facile, debugging, tests, tasks
@@ -523,7 +554,7 @@
 ## Scalabilité
 
 - **Horizontal**: Backend stateless, peut scaler via k8s, plusieurs replicas
-- **DB**: Postgres pour prod, peut passer à TimescaleDB pour time series
+- **DB**: aucune aujourd'hui (fichiers) ; une base (Postgres/TimescaleDB) pourrait être ajoutée plus tard pour les séries temporelles, sans Docker obligatoire
 - **Cache**: Ajouter Redis pour market data cache (actuellement pas de cache, mais prévu)
 - **Queue**: Pour génération présentation longue, ajouter Celery
 - **Vector DB**: Pour Knowledge Base RAG avancé, ajouter Qdrant/Chroma (actuellement keyword search simple pour rester léger)

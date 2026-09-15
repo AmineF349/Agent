@@ -12,20 +12,26 @@
 - Pylance (ms-python.vscode-pylance)
 - Black Formatter
 - Flake8
-- Docker
+- PowerShell
 - YAML
 - Jupyter
 
 ## Configuration Python
 
-1. `Ctrl+Shift+P` (ou `Cmd+Shift+P` Mac) -> "Python: Select Interpreter"
-2. Choisir `.venv/bin/python` ou créer nouveau venv:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r backend/requirements.txt
-   pip install -r frontend/requirements.txt
-   ```
+**Windows :** lancez d'abord `.\setup.ps1` (terminal PowerShell, à la racine). Le venv
+`.venv\Scripts\python.exe` est alors présélectionné par `.vscode/settings.json`.
+
+**Linux / macOS :** lancez `./setup.sh --dev` puis `Ctrl+Shift+P` (ou `Cmd+Shift+P`) ->
+"Python: Select Interpreter" -> `.venv/bin/python` (le chemin par défaut de `settings.json`
+vise le venv Windows ; VS Code détecte de toute façon le `.venv` du workspace).
+
+Manuel (toutes plateformes) :
+
+```bash
+python -m venv .venv
+source .venv/bin/activate                          # Windows : .\.venv\Scripts\Activate.ps1
+pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt
+```
 
 ## Lancement Debug (F5)
 
@@ -50,14 +56,19 @@
 
 ## Tasks (Ctrl+Shift+P -> Tasks: Run Task)
 
-- **Install Backend**: pip install backend
-- **Install Frontend**: pip install frontend
-- **Install All**: les deux
-- **Run Backend**: lance backend sans debug
-- **Run Frontend**: lance frontend sans debug
-- **Docker Compose Up**: lance tout via Docker
-- **Run Tests**: pytest
-- **Lint Backend**: flake8
+- **Windows: Setup (setup.ps1)**: installation complète (`-Dev` inclus)
+- **Windows: Start (setup.ps1)**: backend + frontend dans deux fenêtres (tâche build par défaut : `Ctrl+Shift+B`)
+- **Windows: Stop (stop.ps1)**: arrêt des deux services
+- **Windows: Tests (test.ps1)**: pytest (tâche test par défaut)
+- **Linux/macOS: Setup / Start / Stop / Tests (`.sh`)**: mêmes rôles avec `setup.sh --dev`, `start.sh`, `stop.sh`, `test.sh`
+- **Run Backend (venv)**: lance backend sans debug (interpréteur `.venv`)
+- **Run Frontend (venv)**: lance frontend sans debug
+- **Run Tests (venv)**: pytest
+- **Diagnostic (doctor)**: `scripts/doctor.py` en lecture seule (Python, paquets, `.env`/ports, services, réseau) — à joindre à toute demande d'aide
+- **Lint Backend (flake8)**
+
+Les tâches « Run … (venv) » fonctionnent sur toutes les plateformes (l'interpréteur `.venv` est résolu
+par OS : `.venv\Scripts\python.exe` sous Windows, `.venv/bin/python` sous Linux/macOS).
 
 ## Tests
 
@@ -131,11 +142,17 @@ def test_new_kpi():
 - `st.json()` pour afficher dict
 - Logs dans terminal Streamlit
 
-### Docker
+### Windows (scripts PowerShell)
 
-- Si Docker Compose Up, logs dans terminal Task
-- `docker-compose logs -f backend` pour voir logs
-- `docker-compose exec backend bash` pour shell dans container
+- `start.ps1` ouvre deux fenêtres PowerShell : les logs y défilent en direct
+- Mode `-Background` : logs dans `logs\backend.log` et `logs\frontend.log`
+- `.\stop.ps1` pour tout arrêter (aussi disponible en tâche VS Code)
+
+### Linux / macOS
+
+- `./start.sh` : logs dans `logs/backend.log` et `logs/frontend.log` (`tail -f logs/backend.log`)
+- `./start.sh --foreground` : garde la main dans le terminal, Ctrl+C arrête les deux services
+- `./stop.sh` pour tout arrêter
 
 ## Environnement
 
@@ -179,11 +196,11 @@ def test_new_kpi():
 - Relancer VS Code
 
 **Port déjà utilisé:**
-- `lsof -i :8000` puis `kill -9 <PID>`
+- `./stop.sh` / `.\stop.ps1`, ou `lsof -i :8000` puis `kill <PID>`
 - Ou changer port dans `launch.json`
 
 **Streamlit ne se lance pas:**
-- Vérifier `pip install -r frontend/requirements.txt`
+- Vérifier `pip install --only-binary :all: -r requirements.txt` (ou relancer `setup.ps1` / `setup.sh`)
 - Vérifier port 8501 libre
 - Logs dans Debug Console
 
@@ -195,11 +212,11 @@ def test_new_kpi():
 
 - **Copilot**: Si activé, suggestions code automatiques
 - **Jupyter**: Ouvrir `backend/data_samples/*.csv` avec Jupyter pour explorer
-- **Docker extension**: Gérer containers, images, logs via UI
+- **PowerShell extension**: coloration/analyse des scripts `setup.ps1` / `start.ps1`
 
 ## Prochaines Étapes
 
-- Lire `docs/INSTALLATION.md`
+- Lire `docs/INSTALLATION.md` et `docs/WINDOWS_SETUP.md`
 - Lire `docs/USER_GUIDE.md`
 - Explorer `backend/app/main.py` et `frontend/app.py`
 - Lancer tests et debugger

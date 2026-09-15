@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 import enum
@@ -68,6 +68,10 @@ class ScenarioAssumption(BaseModel):
     source: Optional[str] = None
 
 class ScenarioInput(BaseModel):
+    # "model_type" est un nom métier (AFRY/Aurora...) : on désactive l'espace de noms
+    # protégé "model_" de pydantic v2 pour éviter un warning à chaque import.
+    model_config = ConfigDict(protected_namespaces=())
+
     scenario_name: str
     model_type: Literal["AFRY", "Aurora", "Internal", "Other"] = "Internal"
     country: str = "FR"
@@ -84,6 +88,8 @@ class ScenarioIssue(BaseModel):
     recommendation: str
 
 class ScenarioChallengerResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     scenario_name: str
     model_type: str
     overall_score: float
@@ -145,6 +151,8 @@ class PresentationResponse(BaseModel):
     pdf_path: Optional[str] = None
     slide_count: int
     message: str
+    # URLs relatives de téléchargement via l'API (ex: /api/v1/presentation/download/x.pptx)
+    download_urls: Optional[Dict[str, str]] = None
 
 # --- Knowledge Base ---
 class KnowledgeQuery(BaseModel):

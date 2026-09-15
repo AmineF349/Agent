@@ -2,38 +2,161 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Install Backend",
+            "label": "Windows: Setup (setup.ps1)",
             "type": "shell",
-            "command": "pip install -r backend/requirements.txt",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\setup.ps1",
+                "-Dev"
+            ],
             "group": "build",
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "panel": "shared"
-            }
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Install Frontend",
+            "label": "Windows: Start (start.ps1)",
             "type": "shell",
-            "command": "pip install -r frontend/requirements.txt",
-            "group": "build",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\start.ps1"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Windows: Stop (stop.ps1)",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\stop.ps1"
+            ],
             "presentation": {
                 "echo": true,
                 "reveal": "always"
-            }
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Install All",
+            "label": "Windows: Tests (test.ps1)",
             "type": "shell",
-            "command": "pip install -r backend/requirements.txt && pip install -r frontend/requirements.txt",
-            "group": "build",
-            "dependsOn": []
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}\\test.ps1"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Run Backend",
+            "label": "Linux/macOS: Setup (setup.sh)",
             "type": "shell",
-            "command": "cd backend && uvicorn app.main:app --reload --port 8000 --host 0.0.0.0",
-            "group": "build",
+            "command": "${workspaceFolder}/setup.sh --dev",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Linux/macOS: Start (start.sh)",
+            "type": "shell",
+            "command": "${workspaceFolder}/start.sh",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Linux/macOS: Stop (stop.sh)",
+            "type": "shell",
+            "command": "${workspaceFolder}/stop.sh",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Linux/macOS: Tests (test.sh)",
+            "type": "shell",
+            "command": "${workspaceFolder}/test.sh",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Run Backend (venv)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "-m",
+                "uvicorn",
+                "app.main:app",
+                "--reload",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "env": {
+                    "PYTHONUTF8": "1"
+                }
+            },
             "isBackground": true,
             "presentation": {
                 "echo": true,
@@ -43,43 +166,135 @@
             "problemMatcher": []
         },
         {
-            "label": "Run Frontend",
+            "label": "Run Frontend (venv)",
             "type": "shell",
-            "command": "cd frontend && streamlit run app.py --server.port 8501 --server.address 0.0.0.0",
-            "group": "build",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "-m",
+                "streamlit",
+                "run",
+                "app.py",
+                "--server.port",
+                "8501",
+                "--server.address",
+                "127.0.0.1",
+                "--server.headless",
+                "true"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/frontend",
+                "env": {
+                    "PYTHONUTF8": "1",
+                    "BACKEND_URL": "http://localhost:8000",
+                    "NO_PROXY": "localhost,127.0.0.1"
+                }
+            },
             "isBackground": true,
             "presentation": {
                 "echo": true,
                 "reveal": "always",
                 "panel": "dedicated"
-            }
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Docker Compose Up",
+            "label": "Run Tests (venv)",
             "type": "shell",
-            "command": "docker-compose up --build",
-            "group": "build",
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always"
-            }
-        },
-        {
-            "label": "Run Tests",
-            "type": "shell",
-            "command": "cd backend && python -m pytest tests/ -v",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "-m",
+                "pytest",
+                "tests/",
+                "-v"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/backend",
+                "env": {
+                    "PYTHONUTF8": "1"
+                }
+            },
             "group": "test",
             "presentation": {
                 "echo": true,
                 "reveal": "always"
-            }
+            },
+            "problemMatcher": []
         },
         {
-            "label": "Lint Backend",
+            "label": "Diagnostic (doctor)",
+            "detail": "Python, paquets vs constraints.txt, .env/ports, services, reseau - lecture seule",
             "type": "shell",
-            "command": "cd backend && flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics",
-            "group": "build"
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "${workspaceFolder}/scripts/doctor.py"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONUTF8": "1"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint Backend (flake8)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "-m",
+                "flake8",
+                "app/",
+                "--count",
+                "--select=E9,F63,F7,F82",
+                "--show-source",
+                "--statistics"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build",
+            "problemMatcher": []
         }
     ]
 }

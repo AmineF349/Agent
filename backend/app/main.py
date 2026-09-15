@@ -8,6 +8,7 @@ import logging
 
 from .core.config import settings
 from .core.logging import logger
+from .core.paths import GENERATED_DIR, KNOWLEDGE_BASE_DIR
 from .api.routes import health, data_quality, market_analysis, scenario, meeting, presentation, knowledge, market_data
 from .agent.langgraph_agent import PowerMarketAgent
 from .models.schemas import KnowledgeQuery
@@ -116,9 +117,13 @@ async def startup_event():
     logger.info(f"LLM: {agent.llm._client_type} (real LLM: {agent.llm.has_real_llm()})")
     logger.info(f"ENTSO-E: {'enabled' if settings.has_entsoe else 'disabled (mock fallback)'}")
     logger.info(f"Public APIs: Energy-Charts (free), Open-Meteo (free)")
+    logger.info(f"Knowledge base: {KNOWLEDGE_BASE_DIR}")
+    logger.info(f"Generated files: {GENERATED_DIR}")
     logger.info("Modules: Data Quality, Market Analysis, Scenario Challenger, Meeting, Presentation, Knowledge")
-    logger.info("Docs: http://localhost:8000/docs")
+    logger.info(f"Docs: http://localhost:{settings.BACKEND_PORT}/docs")
     logger.info("="*80)
+    # Sonde réseau des APIs publiques lancée en arrière-plan (ne bloque pas le démarrage)
+    health.refresh_public_api_probe_async()
 
 @app.on_event("shutdown")
 async def shutdown_event():
