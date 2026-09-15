@@ -2,12 +2,42 @@
 
 ## Prérequis
 
-- Python 3.10+ (recommandé 3.11)
-- Docker + Docker Compose (optionnel mais recommandé)
+- Python 3.10 - 3.12, 64 bits (recommandé 3.11). **Optionnel sous Windows :**
+  `setup.ps1` le télécharge et l'installe sans droits administrateur.
+- Docker + Docker Compose : **facultatif** (le mode natif Windows s'en passe)
 - VS Code (recommandé)
 - 4GB RAM minimum, 8GB recommandé
 
-## Option 1: Docker Compose (Recommandé - 1 commande)
+> ⚠️ **PostgreSQL n'est pas requis.** Aucun module du backend n'ouvre de
+> connexion SQL : la persistance est fichier (`backend/generated/`). Il n'y a
+> pas de Redis non plus. Le service `postgres` du `docker-compose.yml` est
+> donc décoratif, et le mode natif n'a besoin d'aucun service externe.
+
+---
+
+## 🪟 Option 0 : Windows natif, SANS Docker (recommandé en entreprise)
+
+Deux commandes PowerShell, aucun droit administrateur, aucune règle de pare-feu :
+
+```powershell
+.\setup.ps1
+.\start.ps1
+```
+
+- Interface : <http://127.0.0.1:8501>
+- API Swagger : <http://127.0.0.1:8000/docs>
+- Arrêt : `.\stop.ps1` — Tests : `.\test.ps1`
+- Diagnostic : `.\.venv\Scripts\python.exe scripts\win\doctor.py`
+
+Si la GPO bloque l'exécution de scripts PowerShell, utilisez `.\setup.bat` et
+`.\start.bat`, ou `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1`.
+
+📘 **Guide détaillé, options et dépannage :
+[`INSTALLATION_WINDOWS.md`](INSTALLATION_WINDOWS.md)**
+
+---
+
+## Option 1: Docker Compose (1 commande)
 
 ```bash
 # Cloner repo
@@ -29,44 +59,58 @@ docker-compose up --build
 
 C'est tout! Tout est fonctionnel.
 
-## Option 2: Local sans Docker (Dev)
+## Option 2: Local sans Docker, à la main (Linux / macOS / Windows avancé)
 
-### Backend
+> Sous Windows, préférez l'Option 0 (`setup.ps1` / `start.ps1`) : elle fait
+> exactement ces étapes en gérant le venv, le `.env`, `PYTHONPATH`, les ports et
+> le diagnostic.
 
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate  # Windows
+Un seul environnement virtuel à la racine suffit pour le backend et le frontend.
 
-pip install -r requirements.txt
-
-# Copier env
-cp ../.env.example ../.env
-
-# Lancer
-uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
-
-# Vérifier
-curl http://localhost:8000/health
-# Ouvrir docs
-open http://localhost:8000/docs
-```
-
-### Frontend
+### Linux / macOS
 
 ```bash
-cd frontend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r backend/requirements.txt -r frontend/requirements.txt
+cp .env.example .env
 
-# Lancer (dans autre terminal)
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+# Terminal 1 - backend
+cd backend && python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
 
-# Ouvrir
-open http://localhost:8501
+# Terminal 2 - frontend
+cd frontend && python -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1
 ```
+
+### Windows (PowerShell, sans les scripts)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt -r frontend\requirements.txt
+Copy-Item .env.example .env
+
+# Fenetre 1 - backend (le repertoire de travail DOIT etre backend\)
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
+
+# Fenetre 2 - frontend
+cd frontend
+..\.venv\Scripts\python.exe -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1
+```
+
+### Vérification
+
+```bash
+# Linux / macOS
+curl http://127.0.0.1:8000/health
+```
+
+```powershell
+# Windows
+Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json
+```
+
+Puis ouvrir <http://127.0.0.1:8000/docs> et <http://127.0.0.1:8501>.
 
 ### Variables d'environnement
 
@@ -99,32 +143,39 @@ Voir `.env.example`:
 ## Vérification Installation
 
 ```bash
-# Backend health
-curl http://localhost:8000/health
+# Backend health (Linux / macOS)
+curl http://127.0.0.1:8000/health
 
 # Doit retourner:
-# {"status":"ok","version":"1.0.0","llm_available":false,"public_apis":{"energy_charts":true,"open_meteo":true}}
-
-# Frontend
-curl http://localhost:8501
+# {"status":"ok","version":"1.0.0","llm_available":false,"public_apis":{...}}
 
 # Tests
-cd backend
-pytest tests/ -v
+cd backend && python -m pytest tests/ -v     # 18 tests
+```
 
-# Doit passer 15+ tests
+```powershell
+# Windows
+Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json
+.\test.ps1
+.\.venv\Scripts\python.exe scripts\win\doctor.py   # diagnostic complet
 ```
 
 ## Troubleshooting
 
 **Backend ne démarre pas:**
-- Vérifier port 8000 libre: `lsof -i :8000`
-- Vérifier PYTHONPATH: `export PYTHONPATH=backend`
-- Logs: `docker-compose logs backend`
+- Vérifier que le port 8000 est libre
+  - Linux/macOS : `lsof -i :8000`
+  - Windows : `Test-NetConnection -ComputerName 127.0.0.1 -Port 8000 -InformationLevel Quiet`
+    (`$true` = déjà occupé)
+- Vérifier PYTHONPATH / répertoire de travail : le backend doit être lancé
+  depuis `backend\` (`$env:PYTHONPATH = "<depot>\backend"`)
+- Windows : `.\start.ps1` le fait pour vous ; logs dans `logs\backend.log`
+- Docker : `docker-compose logs backend`
 
 **Frontend ne se connecte pas au backend:**
-- Vérifier BACKEND_URL dans .env: `BACKEND_URL=http://localhost:8000` (local) ou `http://backend:8000` (docker)
+- Vérifier BACKEND_URL dans .env: `BACKEND_URL=http://127.0.0.1:8000` (natif) ou `http://backend:8000` (docker)
 - Vérifier CORS_ORIGINS
+- Windows : `start.ps1` force `BACKEND_URL` sur l'URL réelle du backend démarré
 
 **APIs publiques down:**
 - Normal, fallback mock automatique, 100% fonctionnel

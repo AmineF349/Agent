@@ -52,6 +52,11 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure generated folder exists
-os.makedirs("generated", exist_ok=True)
-os.makedirs("data_samples", exist_ok=True)
+# Ensure generated folder exists.
+# Chemins ancres sur le paquet backend et non sur le repertoire courant : le
+# frontend Streamlit importe aussi ces modules (calcul local), ce qui creait
+# sinon des dossiers parasites frontend/generated et frontend/data_samples.
+# Docker : /app/app/core/config.py -> /app (identique a l'ancien comportement).
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+for _folder in ("generated", "data_samples"):
+    os.makedirs(os.path.join(BACKEND_DIR, _folder), exist_ok=True)

@@ -40,6 +40,12 @@ frontend/generated/
 # Logs
 *.log
 logs/
+*.pid
+
+# Installation native Windows (setup.ps1) - rien de tout cela n'est versionne
+.python/
+tools/
+.streamlit/secrets.toml
 
 # DB
 *.db

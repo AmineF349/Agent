@@ -5,7 +5,8 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red.svg)](https://streamlit.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
+[![Windows natif](https://img.shields.io/badge/Windows-natif%20sans%20Docker-0078D6.svg)](docs/INSTALLATION_WINDOWS.md)
+[![Docker](https://img.shields.io/badge/Docker-Compose%20(option)-blue.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -32,7 +33,39 @@ Aider à:
 
 ---
 
-## 🚀 Quick Start (1 commande)
+## 🚀 Quick Start
+
+### ✅ Windows — natif, SANS Docker (recommandé en entreprise)
+
+Aucun droit administrateur, aucune invite du pare-feu, rien d'installé hors du
+dossier du dépôt.
+
+```powershell
+git clone <repo_url>
+cd Agent
+.\setup.ps1
+.\start.ps1
+```
+
+Puis ouvrir :
+
+- Interface : http://127.0.0.1:8501
+- API Swagger : http://127.0.0.1:8000/docs
+- Health : http://127.0.0.1:8000/health
+
+Arrêt : `.\stop.ps1` — Tests : `.\test.ps1`
+
+> PowerShell bloque les scripts (`ExecutionPolicy Restricted`) ? Utilisez
+> `.\setup.bat` / `.\start.bat`, ou
+> `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1`.
+>
+> Python absent de la machine ? `setup.ps1` télécharge la distribution
+> officielle python.org **sans installation** et la dézippe dans `.python\`
+> (aucune élévation UAC).
+
+📘 Guide complet : **[`docs/INSTALLATION_WINDOWS.md`](docs/INSTALLATION_WINDOWS.md)**
+
+### 🐳 Docker Compose (optionnel)
 
 ```bash
 git clone <repo_url>
@@ -46,7 +79,12 @@ docker-compose up --build
 - Backend API Docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
-**C'est tout! 100% fonctionnel sans aucune clé API.**
+**Dans les deux cas : 100% fonctionnel sans aucune clé API.**
+
+> ℹ️ Le service `postgres` du compose est **inutile au fonctionnement** : aucun
+> module du backend n'ouvre de connexion SQL (la persistance est fichier, dans
+> `backend/generated/`). C'est ce qui rend le mode natif Windows possible sans
+> aucun service externe. Il n'y a pas de Redis dans le projet.
 
 ---
 
@@ -145,7 +183,7 @@ Frontend (Streamlit) ──HTTP──> Backend (FastAPI)
 - Frontend: Streamlit, Plotly, requests
 - Data: Energy-Charts.info (gratuit, sans clé), Open-Meteo (gratuit, sans clé), ENTSO-E (optionnel, clé gratuite), Mock fallback
 - IA: OpenAI/Claude/Azure OpenAI (optionnel) + Fallback local templates experts (100% fonctionnel sans clé)
-- Infra: Docker Compose, Postgres/SQLite, VS Code config
+- Infra: **Windows natif sans Docker (setup.ps1/start.ps1)** ou Docker Compose, persistance fichier, VS Code config
 
 Voir `ARCHITECTURE.md` pour détails.
 
@@ -223,7 +261,11 @@ Sinon, tout marche en mode fallback.
 │   ├── launch.json
 │   ├── tasks.json
 │   └── extensions.json
-├── docker-compose.yml
+├── scripts/
+│   └── win/ (Common.ps1, env_writer.py, doctor.py)
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1   <- Windows natif, sans Docker
+├── setup.bat / start.bat / stop.bat / test.bat   <- wrappers ExecutionPolicy
+├── docker-compose.yml                            (optionnel)
 ├── Dockerfile.backend
 ├── Dockerfile.frontend
 ├── .env.example
@@ -236,7 +278,22 @@ Sinon, tout marche en mode fallback.
 
 ## 🛠️ Installation
 
-### Option 1: Docker (Recommandé)
+### Option 1 : Windows natif, sans Docker (recommandé)
+
+```powershell
+.\setup.ps1     # Python + .venv + dépendances + .env + auto-diagnostic
+.\start.ps1     # backend :8000 + frontend :8501, navigateur ouvert
+.\stop.ps1      # arrêt propre
+.\test.ps1      # 18 tests pytest
+```
+
+Options utiles : `-Proxy`, `-IndexUrl` (miroir PyPI interne), `-WithDev`,
+`-Recreate`, `-BackendPort`, `-FrontendPort`, `-ListenHost 0.0.0.0`,
+`-NoNewWindow`, `-Reload`.
+
+Voir **[`docs/INSTALLATION_WINDOWS.md`](docs/INSTALLATION_WINDOWS.md)**.
+
+### Option 2 : Docker Compose
 
 ```bash
 cp .env.example .env
@@ -244,19 +301,22 @@ docker-compose up --build
 # Frontend http://localhost:8501, Backend http://localhost:8000/docs
 ```
 
-### Option 2: Local
+### Option 3 : Local manuel (Linux / macOS / Windows avancé)
 
 ```bash
 # Backend
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+python -m venv ../.venv
+../.venv/bin/python -m pip install -r requirements.txt
+../.venv/bin/python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1
 
 # Frontend (autre terminal)
 cd frontend
-pip install -r requirements.txt
-streamlit run app.py --port 8501
+../.venv/bin/python -m pip install -r requirements.txt
+../.venv/bin/python -m streamlit run app.py --server.port 8501
 ```
+
+> Sous Windows remplacez `../.venv/bin/python` par `..\.venv\Scripts\python.exe`.
 
 Voir `docs/INSTALLATION.md` pour détails + troubleshooting.
 
@@ -275,10 +335,15 @@ Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensi
 
 ## 🧪 Tests
 
+```powershell
+# Windows (sans Docker)
+.\test.ps1
+```
+
 ```bash
-cd backend
-pytest tests/ -v
-# 15+ tests: data_quality, market_analysis, scenario, meeting, presentation
+# Linux / macOS
+cd backend && python -m pytest tests/ -v
+# 18 tests: data_quality, market_analysis, scenario, meeting, presentation
 ```
 
 Via VS Code: Onglet Testing -> ▶️
@@ -290,6 +355,7 @@ Via VS Code: Onglet Testing -> ▶️
 - `README.md` (ce fichier) - Overview
 - `ARCHITECTURE.md` - Architecture détaillée + diagramme + choix techniques
 - `ROADMAP.md` - Roadmap v1.1, v1.2, v2.0...
+- `docs/INSTALLATION_WINDOWS.md` - **Installation Windows native sans Docker** (entreprise restreinte)
 - `docs/INSTALLATION.md` - Installation Docker/local + troubleshooting
 - `docs/VSCODE_GUIDE.md` - Guide VS Code dev
 - `docs/API_DOCS.md` - API endpoints + exemples curl
@@ -333,10 +399,10 @@ Voir `docs/USER_GUIDE.md` pour workflows détaillés.
 
 ## 🤝 Contribution
 
-1. Fork, branch `feature/ma-feature` (toujours depuis `arena/01a09f1d-agent` pour cette session)
+1. Fork, puis branchez une branche `feature/ma-feature` sur la branche de travail en cours
 2. Code + tests + docs
 3. `black backend/` + `flake8` + `pytest`
-4. Commit + push sur `arena/01a09f1d-agent`
+4. Commit + push sur votre branche
 5. PR
 
 ---

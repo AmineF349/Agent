@@ -37,9 +37,11 @@ requests==2.31.0
 httpx==0.27.0
 entsoe-py==0.6.10
 
-# Database
+# Database (facultatif : aucune connexion SQL n'est ouverte par l'application,
+# la persistance est fichier). psycopg2-binary n'est donc installe que sous
+# Linux, ce qui evite un binaire inutile sur un poste Windows sans Docker.
 sqlalchemy==2.0.27
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.9; sys_platform != "win32"
 alembic==1.13.1
 
 # Utils

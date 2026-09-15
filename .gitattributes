@@ -1,0 +1,6 @@
+# Les scripts Windows doivent conserver des fins de ligne CRLF :
+# cmd.exe gere mal les .bat en LF, et certains editeurs/AVS refusent les .ps1 en LF.
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf

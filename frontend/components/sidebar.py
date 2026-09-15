@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 
 def render_sidebar():
@@ -11,9 +13,10 @@ def render_sidebar():
         tech = st.selectbox("Technologie", ["solar", "wind_onshore", "wind_offshore", "bess", "nuclear"], index=0)
         st.divider()
         st.markdown("### 📊 Backend Status")
-        # Health check placeholder
-        st.markdown("Backend: http://localhost:8000")
-        st.markdown("Docs: /docs")
+        # URL reelle du backend (definie par start.ps1 via la variable BACKEND_URL)
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+        st.markdown(f"Backend: {backend_url}")
+        st.markdown(f"Docs: {backend_url}/docs")
         st.divider()
         st.markdown("### 💡 Tips")
         st.info("Astuce: Utilisez Data Analysis pour calculer capture rates, puis Scenario Review pour challenger AFRY/Aurora")

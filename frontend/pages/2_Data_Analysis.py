@@ -106,14 +106,26 @@ with tab2:
     tech = st.selectbox("Techno", ["solar", "wind_onshore", "wind_offshore"], index=0, key="ma_tech")
 
     if input_method == "Mock FR 30j":
-        from backend.app.data.connectors.mock_generator import MockDataGenerator
-        gen = MockDataGenerator()
-        mock_data = gen.generate_prices(country=country, days=30)
-        prices = [d["price"] for d in mock_data]
-        # Also generate renewable profile
-        ren_data = gen.generate_renewable_profile(technology=tech, days=30, capacity_mw=100)
-        generation = [d["generation_mw"] for d in ren_data]
-        st.success(f"Généré {len(prices)} prix + {len(generation)} génération {tech}")
+        try:
+            from backend.app.data.connectors.mock_generator import MockDataGenerator
+        except ImportError as exc:
+            MockDataGenerator = None
+            st.error(
+                "Générateur mock indisponible : le code backend n'est pas importable "
+                f"depuis le frontend ({exc}).\n\n"
+                "- **Natif Windows** : relancez `.\\setup.ps1` (backend et frontend "
+                "doivent partager le même `.venv`).\n"
+                "- **Docker** : le conteneur frontend ne contient pas `backend/` ; "
+                "utilisez la source *Live API Energy-Charts* ou *Manuel*."
+            )
+        if MockDataGenerator is not None:
+            gen = MockDataGenerator()
+            mock_data = gen.generate_prices(country=country, days=30)
+            prices = [d["price"] for d in mock_data]
+            # Also generate renewable profile
+            ren_data = gen.generate_renewable_profile(technology=tech, days=30, capacity_mw=100)
+            generation = [d["generation_mw"] for d in ren_data]
+            st.success(f"Généré {len(prices)} prix + {len(generation)} génération {tech}")
 
     elif input_method == "Live API Energy-Charts":
         if st.button("Fetch live FR"):
