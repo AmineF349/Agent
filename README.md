@@ -11,6 +11,22 @@
 
 ---
 
+> ## 🪟 Vous êtes sur Windows et Docker est bloqué ?
+>
+> **Deux commandes, aucun droit administrateur :**
+>
+> ```powershell
+> .\setup.ps1
+> .\start.ps1
+> ```
+>
+> | Document | Contenu |
+> |---|---|
+> | 📘 [`docs/INSTALLATION_WINDOWS.md`](docs/INSTALLATION_WINDOWS.md) | **Mode d'emploi** : installation, démarrage, GPO, proxy, dépannage |
+> | 📄 [`MODIFICATIONS_WINDOWS.md`](MODIFICATIONS_WINDOWS.md) | **Note technique** : ce qui a été modifié, pourquoi, et ce qui a été vérifié |
+
+---
+
 ## 🎯 Vision Produit
 
 Devenir le **copilote quotidien** des analystes travaillant sur:

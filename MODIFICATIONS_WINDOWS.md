@@ -13,6 +13,23 @@
 | **Diff exact** | voir l'onglet *Files changed* de la PR #2 (les compteurs de lignes de ce tableau seraient faux dès le prochain commit) |
 | **Objectif** | Installer et lancer 100 % du projet sur Windows, **sans Docker Desktop** et **sans droits administrateur** |
 
+### En 30 secondes
+
+- **Le problème** : le seul chemin d'installation fiable était `docker-compose up --build`.
+- **La clé** : PostgreSQL est déclaré dans le compose mais **jamais utilisé** par le code,
+  il n'y a **pas de Redis**, et tous les services externes ont un repli local.
+  → **aucun service externe n'est requis**, donc Docker n'apportait rien d'indispensable.
+- **La solution** : `setup.ps1` + `start.ps1`, tout dans le dossier du dépôt,
+  écoute en `127.0.0.1`, Python téléchargé en version *sans installation* s'il manque.
+- **3 bugs corrigés au passage**, dont un bloquant (`ModuleNotFoundError: No module named 'backend'`
+  qui faisait planter la page *Data Analysis* dès l'affichage).
+- **Docker n'est pas cassé** : `docker-compose` et `Dockerfile.frontend` gardent
+  exactement le même comportement (voir §5).
+- **Vérifié** : 18/18 tests, backend démarré avec la commande exacte de `start.ps1`,
+  7/7 pages Streamlit, 8/8 clics de bouton.
+- **Non vérifié** : les `.ps1` n'ont pas pu être **exécutés** sur Windows
+  (PowerShell non installable dans l'environnement de test). Voir §6.
+
 ---
 
 ## 1. Le problème de départ
