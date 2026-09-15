@@ -16,7 +16,7 @@
 - ✅ FastAPI backend + Streamlit frontend
 - ✅ LangGraph agent + LLM provider (OpenAI/Claude/Azure/Local fallback)
 - ✅ Public APIs gratuites (Energy-Charts, Open-Meteo) + ENTSO-E optional + Mock fallback
-- ✅ Installation 100 % native (Windows sans admin : setup.ps1/start.ps1 ; Linux/macOS : setup.sh/start.sh) + VS Code config
+- ✅ Installation 100 % native (Windows sans admin : setup.ps1/start.ps1 ; Linux/macOS : setup.sh/start.sh), dépendances verrouillées (constraints.txt), installation hors-ligne (wheelhouse) + VS Code config
 - ✅ Tests (15+ tests)
 - ✅ Docs (INSTALLATION, VSCODE_GUIDE, API_DOCS, USER_GUIDE, ARCHITECTURE)
 

@@ -43,7 +43,7 @@ cd Agent
 
 | Script | Rôle et options |
 |--------|-----------------|
-| `setup.sh` | `--python /chemin/python3.11` (interpréteur explicite), `--dev` (pytest/black/flake8), `--force` (recrée le `.venv`) |
+| `setup.sh` | `--python /chemin/python3.11` (interpréteur explicite), `--dev` (pytest/black/flake8), `--force` (recrée le `.venv`), `--offline` (dépendances lues dans `./wheelhouse/`, aucun accès réseau) |
 | `start.sh` | Lance les deux services en arrière-plan (logs dans `logs/backend.log` et `logs/frontend.log`, PIDs dans `logs/pids.env`). Options : `--foreground` (Ctrl+C arrête tout), `--backend-port N`, `--frontend-port N`, `--no-browser`, `--backend-only`, `--frontend-only`, `--no-reload` |
 | `stop.sh` | Arrête les processus lancés par `start.sh` et libère les ports du projet (uniquement s'ils sont tenus par un python du `.venv`) |
 | `test.sh` | `pytest tests/ -v` depuis `backend/` ; arguments transmis à pytest (`./test.sh -k baseload -x`) |
@@ -72,17 +72,50 @@ Avec des droits : `brew install python@3.11` (macOS) ou `sudo apt install python
 ## Option 3 : Manuel (toutes plateformes)
 
 Un seul environnement virtuel à la racine pour le backend et le frontend (`requirements.txt`
-regroupe les deux et ne contient que des wheels précompilées).
+regroupe les deux et ne contient que des wheels précompilées ; `constraints.txt` fige les
+dépendances indirectes).
 
 ```bash
 git clone https://github.com/AmineF349/Agent.git
 cd Agent
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell : .\.venv\Scripts\Activate.ps1
-pip install --only-binary :all: -r requirements.txt
+pip install --only-binary :all: -r requirements.txt -c constraints.txt
 cp .env.example .env               # Windows : Copy-Item .env.example .env
 python scripts/check_install.py    # vérification (imports backend/frontend, chemins, .env)
 ```
+
+## Installation hors-ligne (poste sans accès à PyPI)
+
+Les dépendances peuvent être préparées sur **n'importe quelle machine connectée** (l'OS et le
+Python cibles sont des paramètres, pas ceux de la machine qui télécharge) :
+
+```bash
+python scripts/make_wheelhouse.py                                  # pour cette machine
+python scripts/make_wheelhouse.py --platform win_amd64 --python-version 3.11 --zip   # pour un poste Windows
+python scripts/make_wheelhouse.py --all-platforms                  # tout (≈ 2 Go)
+# plateformes : win_amd64, linux_x86_64, linux_aarch64, macos_arm64, macos_x86_64
+```
+
+Copiez le dossier `wheelhouse/` (ou `wheelhouse.zip` décompressé) à la racine du projet sur le
+poste cible, puis `./setup.sh --offline` ou `.\setup.ps1 -Offline` : pip travaille en
+`--no-index --find-links wheelhouse`, sans aucun accès réseau. Python 3.10-3.12 doit déjà être
+présent sur le poste cible. Un `wheelhouse/` présent est aussi utilisé en priorité par une
+installation normale (PyPI ne sert qu'aux paquets manquants).
+
+## Reproductibilité des dépendances (`constraints.txt`)
+
+- `requirements.txt` / `requirements-dev.txt` : les dépendances **directes**, épinglées (source de vérité).
+- `constraints.txt` : **toutes** les dépendances (directes + indirectes) figées pour Windows, Linux et
+  macOS, Python 3.10 à 3.12, en une seule résolution « universelle » (marqueurs d'environnement).
+  Généré par `python scripts/update_constraints.py` (utilise [uv](https://docs.astral.sh/uv/),
+  installé automatiquement dans le venv si absent) ; `--upgrade` remonte les indirectes,
+  `--check` (utilisé par la CI) vérifie qu'il est à jour.
+- Toutes les versions ont été vérifiées disponibles en wheel précompilée (cp310-cp312 ;
+  win_amd64, manylinux x86_64, macOS x86_64 et arm64).
+
+Pour changer une dépendance : modifiez `requirements.txt`, lancez `python scripts/update_constraints.py`,
+puis `./setup.sh` / `.\setup.ps1` (et régénérez le wheelhouse si vous en distribuez un).
 
 ### Backend
 
@@ -166,6 +199,7 @@ curl http://localhost:8501/_stcore/health     # -> ok
 **`pip install` échoue (proxy d'entreprise)**
 - `export HTTPS_PROXY=http://proxy:port` (et `HTTP_PROXY`) puis relancez `./setup.sh` ;
   si le proxy réécrit les certificats : `pip config set global.trusted-host "pypi.org files.pythonhosted.org"`.
+- Aucun accès à PyPI possible : voir « Installation hors-ligne » ci-dessus.
 
 **Backend ne démarre pas:**
 - Vérifier port 8000 libre: `lsof -i :8000` (Linux/macOS) / `Get-NetTCPConnection -LocalPort 8000` (Windows), ou simplement `./stop.sh` / `.\stop.ps1`
@@ -211,10 +245,11 @@ curl http://localhost:8501/_stcore/health     # -> ok
 │   ├── concepts/ (capture_rate, baseload, BESS...)
 │   └── models/ (AFRY, Aurora)
 ├── docs/
-├── scripts/ (check_install.py, run_logged.py, windows/common.ps1, unix/common.sh)
+├── scripts/ (check_install.py, run_logged.py, make_wheelhouse.py, update_constraints.py,
+│             windows/common.ps1, unix/common.sh)
 ├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 (Windows)
 ├── setup.sh / start.sh / stop.sh / test.sh (Linux / macOS)
-├── requirements.txt / requirements-dev.txt
+├── requirements.txt / requirements-dev.txt / constraints.txt
 └── .env.example
 ```
 

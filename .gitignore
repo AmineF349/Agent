@@ -41,9 +41,11 @@ frontend/generated/
 *.log
 logs/
 
-# Windows natif (setup.ps1)
+# Installation native (setup.ps1 / setup.sh)
 .python/
 .python-extract/
+wheelhouse/
+wheelhouse.zip
 
 # Testing
 .pytest_cache/

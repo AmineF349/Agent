@@ -73,7 +73,7 @@ sortant est filtré.
 .\setup.ps1 -Force     # recrée le .venv de zéro
 .\setup.ps1 -Python "C:\Users\moi\AppData\Local\Programs\Python\Python311\python.exe"
 .\setup.ps1 -Portable  # Python portable dans .\.python\ (rien d'installé sur le poste)
-.\setup.ps1 -Offline   # n'essaie jamais de télécharger Python
+.\setup.ps1 -Offline   # aucun accès réseau : dépendances lues dans .\wheelhouse\ (voir §2.1)
 ```
 
 Ce que fait le script :
@@ -84,9 +84,11 @@ Ce que fait le script :
    sont ignorés.
 2. **Crée `.venv\`** à la racine du projet (un seul environnement pour le backend
    et le frontend).
-3. **Installe `requirements.txt`** avec `pip install --only-binary :all:` :
+3. **Installe `requirements.txt`** avec `pip install --only-binary :all: -c constraints.txt` :
    uniquement des wheels précompilées → aucune compilation, aucun compilateur C++.
-   C'est le même fichier pour toutes les plateformes (Windows, Linux, macOS).
+   `constraints.txt` fige toutes les dépendances indirectes : mêmes versions sur
+   tous les postes (Windows, Linux, macOS), sans image Docker. Si un dossier
+   `.\wheelhouse\` est présent, les paquets y sont lus en priorité.
 4. **Crée `.env`** (copie de `.env.example`) et les dossiers `backend\generated\`,
    `logs\`.
 5. **Vérifie** l'installation (`scripts\check_install.py`) : import du
@@ -94,6 +96,32 @@ Ce que fait le script :
 
 Le script est **idempotent** : relancez-le après un `git pull` pour mettre à
 jour les dépendances.
+
+### 2.1 Poste sans accès à PyPI : installation hors-ligne (« wheelhouse »)
+
+Si le proxy bloque `pypi.org` (ou pour une salle de formation), préparez les
+dépendances **sur n'importe quel poste connecté** (Windows, Linux ou macOS —
+pip télécharge les wheels *Windows* même depuis un Mac) :
+
+```powershell
+# poste connecté, dans le dépôt (après .\setup.ps1 ou avec n'importe quel Python 3.10+ ayant pip)
+python scripts\make_wheelhouse.py --platform win_amd64 --python-version 3.11 --zip
+# -> wheelhouse\ (≈ 270 Mo, 151 wheels) et wheelhouse.zip
+```
+
+Copiez `wheelhouse.zip` (clé USB, partage réseau…) et décompressez-le à la
+racine du projet sur le poste cible, puis :
+
+```powershell
+.\setup.ps1 -Offline          # pip --no-index --find-links .\wheelhouse : aucun accès réseau
+```
+
+- La version de Python du wheelhouse doit être celle du poste cible (`--python-version 3.10|3.11|3.12`) ;
+  `--all-platforms` génère tout (Windows/Linux/macOS × 3.10/3.11/3.12, ≈ 2 Go) si vous ne savez pas à l'avance.
+- Python lui-même doit déjà être présent sur le poste (installeur python.org « pour moi
+  uniquement », ou copiez aussi le dossier `.python\` d'un poste où `setup.ps1 -Portable` a été exécuté).
+- Sans `-Offline`, un `wheelhouse\` présent est quand même utilisé en priorité, PyPI ne servant
+  qu'aux paquets manquants.
 
 ---
 
@@ -225,6 +253,8 @@ ou, plus propre, pointez pip vers le bundle de certificats de l'entreprise :
 Dépôt PyPI interne (Artifactory / Nexus) :
 `$env:PIP_INDEX_URL = "https://artifactory.entreprise.local/artifactory/api/pypi/pypi-remote/simple"`.
 
+Aucun accès possible à PyPI (même via proxy) : installation hors-ligne, voir §2.1.
+
 ### pip : `No matching distribution found` / `Could not find a version that satisfies`
 Presque toujours une version de Python non supportée (3.13+, ou 32 bits).
 Vérifiez avec `py -0p` ou `python -c "import sys,platform;print(sys.version, platform.architecture())"`
@@ -309,9 +339,12 @@ compound) utilise l'interpréteur sélectionné.
 
 ```powershell
 git pull
-.\setup.ps1      # met à jour les dépendances si requirements.txt a changé
+.\setup.ps1      # met à jour les dépendances si requirements.txt / constraints.txt ont changé
 .\start.ps1
 ```
+
+Poste hors-ligne : régénérez le wheelhouse sur le poste connecté (`make_wheelhouse.py`)
+après chaque changement de `constraints.txt`, puis `.\setup.ps1 -Offline`.
 
 ## 10. Désinstallation
 

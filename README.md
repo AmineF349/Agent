@@ -249,9 +249,10 @@ Sinon, tout marche en mode fallback.
 ├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1   (Windows)
 ├── setup.cmd / start.cmd / stop.cmd               (double-clic, contourne ExecutionPolicy)
 ├── setup.sh / start.sh / stop.sh / test.sh        (Linux / macOS)
-├── scripts/ (check_install.py, run_logged.py, windows/common.ps1, unix/common.sh)
+├── scripts/ (check_install.py, run_logged.py, make_wheelhouse.py, update_constraints.py, windows/, unix/)
 ├── requirements.txt (backend + frontend, wheels précompilées uniquement)
 ├── requirements-dev.txt
+├── constraints.txt (verrou des dépendances transitives, toutes plateformes)
 ├── .github/workflows/ci.yml (Ubuntu + macOS + Windows)
 ├── .env.example
 ├── ARCHITECTURE.md
@@ -275,7 +276,7 @@ pas de compilateur (toutes les dépendances sont installées en wheels précompi
 
 | Script | Rôle |
 |--------|------|
-| `setup.ps1` | Détecte Python 3.10-3.12 (ou l'installe sans admin), crée `.venv`, installe `requirements.txt`, crée `.env`, vérifie l'installation. Options : `-Dev`, `-Force`, `-Python <exe>`, `-Portable`, `-Offline` |
+| `setup.ps1` | Détecte Python 3.10-3.12 (ou l'installe sans admin), crée `.venv`, installe `requirements.txt` (+ `constraints.txt`), crée `.env`, vérifie l'installation. Options : `-Dev`, `-Force`, `-Python <exe>`, `-Portable`, `-Offline` (wheelhouse local, zéro réseau) |
 | `start.ps1` | Lance backend (uvicorn :8000) + frontend (Streamlit :8501) dans deux fenêtres, attend `/health`, ouvre le navigateur. Options : `-Background`, `-BackendPort`, `-FrontendPort`, `-NoBrowser`, `-BackendOnly`, `-FrontendOnly`, `-NoReload` |
 | `stop.ps1` | Arrête proprement les deux services |
 | `test.ps1` | Lance `pytest` |
@@ -285,7 +286,7 @@ Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/
 ### Linux / macOS
 
 ```bash
-./setup.sh         # --dev, --force, --python /chemin/python3.11
+./setup.sh         # --dev, --force, --python /chemin/python3.11, --offline
 ./start.sh         # --foreground, --backend-port, --frontend-port, --no-browser, --backend-only, --frontend-only
 ./stop.sh
 ./test.sh
@@ -294,12 +295,23 @@ Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/
 Pas de Python 3.10-3.12 ? Sans droits root : `curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.11`
 puis `./setup.sh --python "$(uv python find 3.11)"`.
 
+### Poste sans accès à PyPI (hors-ligne)
+
+```bash
+python scripts/make_wheelhouse.py --platform win_amd64 --python-version 3.11 --zip   # sur un poste connecté (n'importe quel OS)
+# copier wheelhouse/ à la racine du projet sur le poste cible, puis :
+.\setup.ps1 -Offline      # ou ./setup.sh --offline  -> pip --no-index, zéro réseau
+```
+
+Les dépendances indirectes sont figées dans `constraints.txt` (résolution universelle Windows/Linux/macOS,
+Python 3.10-3.12) : le même environnement partout, sans image Docker. Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
 ### Manuel (toutes plateformes)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows : .\.venv\Scripts\Activate.ps1
-pip install --only-binary :all: -r requirements.txt
+pip install --only-binary :all: -r requirements.txt -c constraints.txt
 
 # Backend
 cd backend && uvicorn app.main:app --reload --port 8000
@@ -336,8 +348,9 @@ Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensi
 
 CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Ubuntu), puis exécution réelle des scripts
 d'installation et de lancement : `setup.sh` / `start.sh` / `stop.sh` sur Ubuntu et macOS, `setup.ps1` / `start.ps1` / `stop.ps1`
-sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus), avec vérification HTTP du backend et du frontend et
-génération/téléchargement d'un PPTX de bout en bout.
+sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus), avec vérification HTTP du backend et du frontend,
+génération/téléchargement d'un PPTX de bout en bout, et installation **hors-ligne** (wheelhouse + `--offline` / `-Offline`
+avec réseau coupé). La CI vérifie aussi que `constraints.txt` est à jour.
 
 Via VS Code: Onglet Testing -> ▶️
 

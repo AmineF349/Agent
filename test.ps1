@@ -25,7 +25,10 @@ if (-not $VenvPython) { Write-Fail "Environnement virtuel introuvable. Lancez : 
 
 if (-not (Test-PythonModule $VenvPython "pytest")) {
     Write-Info "pytest absent : installation des outils de dev (requirements-dev.txt)"
-    $r = Invoke-Native -Exe $VenvPython -Arguments @("-m", "pip", "install", "--only-binary", ":all:", "-r", (Join-Path $Root "requirements-dev.txt"))
+    $devArgs = @("-m", "pip", "install", "--only-binary", ":all:", "-r", (Join-Path $Root "requirements-dev.txt"), "-c", (Join-Path $Root "constraints.txt"))
+    $wheelhouse = Join-Path $Root "wheelhouse"
+    if ((Test-Path $wheelhouse) -and @(Get-ChildItem -Path $wheelhouse -Filter "*.whl" -ErrorAction SilentlyContinue).Count -gt 0) { $devArgs += @("--find-links", $wheelhouse) }
+    $r = Invoke-Native -Exe $VenvPython -Arguments $devArgs
     if ($r.ExitCode -ne 0) { Write-Fail "Installation de pytest echouee."; Show-ProxyHint; exit 1 }
 }
 

@@ -15,7 +15,9 @@ if [ -z "$VENV_PYTHON" ]; then fail "Environnement virtuel introuvable. Lancez :
 
 if ! python_has_module "$VENV_PYTHON" pytest; then
     info "pytest absent : installation des outils de dev (requirements-dev.txt)"
-    if ! "$VENV_PYTHON" -m pip install --only-binary :all: -r "$ROOT/requirements-dev.txt"; then
+    DEV_SOURCE=()
+    if ls "$ROOT/wheelhouse"/*.whl >/dev/null 2>&1; then DEV_SOURCE=(--find-links "$ROOT/wheelhouse"); fi
+    if ! "$VENV_PYTHON" -m pip install --only-binary :all: -r "$ROOT/requirements-dev.txt" -c "$ROOT/constraints.txt" ${DEV_SOURCE[@]+"${DEV_SOURCE[@]}"}; then
         fail "Installation de pytest echouee."; show_proxy_hint; exit 1
     fi
 fi

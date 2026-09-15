@@ -9,8 +9,11 @@
        installation "pour moi uniquement" (sans admin) ou un Python portable
        dans .\.python\ (rien d'installe sur le systeme).
     2. Cree un environnement virtuel .venv a la racine du projet.
-    3. Installe les dependances backend + frontend depuis requirements.txt
-       (wheels precompilees uniquement : aucune compilation, aucun Visual C++).
+    3. Installe les dependances backend + frontend depuis requirements.txt,
+       versions transitives verrouillees par constraints.txt (wheels
+       precompilees uniquement : aucune compilation, aucun Visual C++).
+       Si un dossier .\wheelhouse\ existe (prepare par
+       scripts\make_wheelhouse.py), il est utilise en priorite.
     4. Cree le fichier .env (copie de .env.example) et les dossiers de travail.
     5. Verifie que l'application s'importe correctement.
 
@@ -24,7 +27,9 @@
     Installe aussi les outils de developpement (pytest, black, flake8).
 
 .PARAMETER Offline
-    Ne tente aucun telechargement de Python (echoue si aucun Python n'est trouve).
+    Aucun acces reseau : Python doit deja etre present et les dependances sont
+    installees uniquement depuis .\wheelhouse\ (pip --no-index).
+    Preparation sur un poste connecte :  python scripts\make_wheelhouse.py --platform win_amd64 --python-version 3.11
 
 .PARAMETER Force
     Recree l'environnement virtuel .venv meme s'il existe deja.
@@ -34,6 +39,7 @@
     .\setup.ps1 -Dev
     .\setup.ps1 -Python "C:\Python311\python.exe"
     .\setup.ps1 -Portable
+    .\setup.ps1 -Offline      (poste sans acces a PyPI, avec .\wheelhouse\)
 
 .NOTES
     Si l'execution des scripts est bloquee ("l'execution de scripts est desactivee") :
@@ -61,8 +67,15 @@ Set-Location $Root
 Write-Banner "Power Market Intelligence Agent - Installation Windows"
 
 # --- Verifications preliminaires -------------------------------------------
-if (-not (Test-Path (Join-Path $Root "requirements.txt")) -or -not (Test-Path (Join-Path $Root "backend\app\main.py"))) {
-    Write-Fail "requirements.txt / backend\app\main.py introuvables. Lancez ce script depuis la racine du depot."
+if (-not (Test-Path (Join-Path $Root "requirements.txt")) -or -not (Test-Path (Join-Path $Root "constraints.txt")) -or -not (Test-Path (Join-Path $Root "backend\app\main.py"))) {
+    Write-Fail "requirements.txt / constraints.txt / backend\app\main.py introuvables. Lancez ce script depuis la racine du depot."
+    exit 1
+}
+$Wheelhouse = Join-Path $Root "wheelhouse"
+$HasWheelhouse = (Test-Path $Wheelhouse) -and @(Get-ChildItem -Path $Wheelhouse -Filter "*.whl" -ErrorAction SilentlyContinue).Count -gt 0
+if ($Offline -and -not $HasWheelhouse) {
+    Write-Fail "-Offline : aucun wheel dans $Wheelhouse. Preparez-le sur un poste connecte :"
+    Write-Info "    python scripts\make_wheelhouse.py --platform win_amd64 --python-version 3.11"
     exit 1
 }
 if (Test-IsAdmin) {
@@ -160,27 +173,49 @@ $env:PIP_DISABLE_PIP_VERSION_CHECK = "1"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
-Write-Info "Mise a jour de pip"
-$r = Invoke-Native -Exe $VenvPython -Arguments @("-m", "pip", "install", "--upgrade", "pip", "--quiet", "--disable-pip-version-check")
-if ($r.ExitCode -ne 0) {
-    Write-Warn "Mise a jour de pip echouee (proxy ?). On continue avec la version existante."
-    Show-ProxyHint
+# Source des paquets : PyPI (ou index interne via PIP_INDEX_URL), wheelhouse local, ou les deux.
+$pipSource = @()
+if ($HasWheelhouse) {
+    $pipSource += @("--find-links", $Wheelhouse)
+    if ($Offline) {
+        $pipSource += @("--no-index")
+        Write-Ok "Mode hors-ligne : wheels lues dans $Wheelhouse (aucun acces reseau)"
+    } else {
+        Write-Ok "Wheelhouse detecte : $Wheelhouse (PyPI utilise seulement pour les paquets absents)"
+    }
 }
 
+Write-Info "Mise a jour de pip"
+$r = Invoke-Native -Exe $VenvPython -Arguments (@("-m", "pip", "install", "--upgrade", "pip", "--quiet", "--disable-pip-version-check") + $pipSource)
+if ($r.ExitCode -ne 0) {
+    Write-Warn "Mise a jour de pip echouee (proxy ?). On continue avec la version existante."
+    if (-not $Offline) { Show-ProxyHint }
+}
+
+# constraints.txt verrouille les dependances transitives (memes versions sur
+# Windows / Linux / macOS, Python 3.10-3.12) : pas de "ca marche chez moi".
 $pipArgs = @(
     "-m", "pip", "install",
     "--only-binary", ":all:",     # jamais de compilation locale (pas de Visual C++ requis)
-    "-r", (Join-Path $Root "requirements.txt")
+    "-r", (Join-Path $Root "requirements.txt"),
+    "-c", (Join-Path $Root "constraints.txt")
 )
 if ($Dev) { $pipArgs += @("-r", (Join-Path $Root "requirements-dev.txt")) }
+$pipArgs += $pipSource
 
-Write-Info "pip install --only-binary :all: -r requirements.txt$(if ($Dev) { ' -r requirements-dev.txt' })"
-Write-Info "(premiere installation : ~400 Mo a telecharger, 2 a 5 minutes)"
+Write-Info "pip install --only-binary :all: -r requirements.txt -c constraints.txt$(if ($Dev) { ' -r requirements-dev.txt' })"
+if (-not $Offline) { Write-Info "(premiere installation : ~400 Mo a telecharger, 2 a 5 minutes)" }
 $r = Invoke-Native -Exe $VenvPython -Arguments $pipArgs
 if ($r.ExitCode -ne 0) {
     Write-Fail "Installation des dependances echouee (code $($r.ExitCode))."
-    Show-ProxyHint
-    Write-Info "Verifiez aussi que la version de Python est 3.10, 3.11 ou 3.12 en 64 bits (pas 3.13+, pas 32 bits)."
+    if ($Offline) {
+        $pyDesc = (Invoke-Native -Exe $VenvPython -Arguments @("-c", "import sys; print('%d.%d' % sys.version_info[:2])") -Quiet).Output.Trim()
+        Write-Info "Le wheelhouse doit correspondre a Windows 64 bits et a ce Python ($pyDesc) :"
+        Write-Info "    python scripts\make_wheelhouse.py --platform win_amd64 --python-version $pyDesc"
+    } else {
+        Show-ProxyHint
+        Write-Info "Verifiez aussi que la version de Python est 3.10, 3.11 ou 3.12 en 64 bits (pas 3.13+, pas 32 bits)."
+    }
     exit 1
 }
 Write-Ok "Dependances installees"

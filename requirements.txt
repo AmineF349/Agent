@@ -20,6 +20,11 @@
 #     (TypeError ForwardRef._evaluate ... recursive_guard).
 #   - uvicorn[standard] : uvloop est automatiquement exclu sous Windows
 #     (marqueur d'environnement) ; le rechargement utilise watchfiles.
+#
+# Reproductibilite : les dependances transitives sont verrouillees dans
+# constraints.txt (pip install -r requirements.txt -c constraints.txt), genere
+# par scripts/update_constraints.py. Installation hors-ligne : voir
+# scripts/make_wheelhouse.py et docs/INSTALLATION.md.
 # =============================================================================
 
 # --- Backend : API ---
@@ -66,6 +71,7 @@ tenacity==8.2.3
 structlog==24.1.0
 orjson==3.9.15
 aiofiles==23.2.1
+chardet==5.2.0  # dependance de reportlab ; requests 2.31 exige chardet < 6 (sinon RequestsDependencyWarning)
 
 # --- Frontend : Streamlit ---
 streamlit==1.35.0

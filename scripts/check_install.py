@@ -1,7 +1,8 @@
-"""
+r"""
 Verification post-installation (appele par setup.ps1 / setup.sh, utilisable seul) :
 
-    .venv\Scripts\python.exe scripts\check_install.py
+    .venv\Scripts\python.exe scripts\check_install.py     (Windows)
+    .venv/bin/python scripts/check_install.py            (Linux / macOS)
 
 - verifie la version de Python,
 - verifie que les dependances critiques s'importent,
@@ -82,7 +83,7 @@ if not missing:
         print(f"Fichier .env : {paths.ENV_FILE} ({'present' if paths.ENV_FILE.exists() else 'absent - valeurs par defaut'})")
         if not paths.KNOWLEDGE_BASE_DIR.exists():
             problems.append(f"Knowledge base introuvable : {paths.KNOWLEDGE_BASE_DIR}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         import traceback
 
         problems.append("Import du backend impossible :\n" + traceback.format_exc())

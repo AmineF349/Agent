@@ -83,6 +83,8 @@
 ### Infra
 
 - **100 % natif, sans Docker** : un seul `.venv` (backend + frontend) créé à partir de `requirements.txt` (wheels précompilées uniquement, Python 3.10-3.12 64 bits)
+- **Reproductibilité** : `constraints.txt` = résolution universelle (Windows/Linux/macOS × Python 3.10-3.12) de toutes les dépendances transitives, générée par `scripts/update_constraints.py` (uv) et vérifiée par la CI ; c'est l'équivalent « natif » d'une image figée
+- **Hors-ligne** : `scripts/make_wheelhouse.py` télécharge les wheels d'une plateforme cible (cross-OS) dans `wheelhouse/` ; `setup.ps1 -Offline` / `setup.sh --offline` installent en `pip --no-index --find-links`
 - **Windows (sans admin)** : `setup.ps1`, `start.ps1`, `stop.ps1`, `test.ps1` + `scripts/windows/common.ps1` (lanceurs `.cmd` pour le double-clic)
 - **Linux / macOS** : `setup.sh`, `start.sh`, `stop.sh`, `test.sh` + `scripts/unix/common.sh`
 - **Communs** : `scripts/check_install.py` (vérification post-installation), `scripts/run_logged.py` (lancement d'un service avec stdout+stderr fusionnés dans `logs/*.log`)
@@ -543,7 +545,8 @@ stop.sh   ──► SIGTERM sur les groupes de processus enregistrés + libère 
 - Docker Desktop est souvent interdit sur les postes d'entreprise (et exige des droits admin / WSL2) : le projet n'en dépend plus du tout
 - Tout tient dans un `.venv` : aucune installation système, aucune élévation, désinstallation = suppression du dossier
 - `--only-binary :all:` garantit l'absence de compilation (pas de Visual C++ Build Tools / gcc) ; Python 3.10-3.12 64 bits requis pour disposer des wheels
-- Mêmes étapes et même `requirements.txt` sur Windows (`.ps1`) et Linux/macOS (`.sh`) ; la reproductibilité est assurée par les versions épinglées et la CI multi-OS
+- Mêmes étapes et même `requirements.txt` sur Windows (`.ps1`) et Linux/macOS (`.sh`) ; la reproductibilité qu'apportait une image Docker est assurée par `constraints.txt` (toutes les versions figées, toutes plateformes) et la CI multi-OS
+- Les postes sans accès à PyPI sont couverts par le wheelhouse (préparé sur un poste connecté, quel que soit son OS)
 
 **VS Code config**:
 - Pour dev local facile, debugging, tests, tasks
