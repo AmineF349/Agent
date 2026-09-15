@@ -138,6 +138,13 @@ jobs:
       - name: test.sh
         run: ./test.sh
 
+      - name: doctor.sh (diagnostic, services arrêtés)
+        run: |
+          ./doctor.sh > doctor.log 2>&1 && code=0 || code=$?
+          cat doctor.log
+          [ "$code" -eq 0 ] || { echo "doctor.sh signale un probleme bloquant ($code)"; exit 1; }
+          case "$(cat doctor.log)" in *"installation saine"*) ;; *) echo "Verdict 'installation saine' absent"; exit 1 ;; esac
+
       - name: start.sh (backend + frontend en arrière-plan), vérification HTTP
         run: |
           ./start.sh --no-browser
@@ -171,6 +178,15 @@ jobs:
           echo "Telechargement OK ($size octets)"
           count=$(curl -sS --noproxy '*' --max-time 15 'http://127.0.0.1:8000/api/v1/presentation/files?limit=5' | python3 -c 'import sys, json; d = json.load(sys.stdin); print(d["count"]); print("/files OK :", d["directory"], file=sys.stderr)')
           [ "$count" -ge 3 ] || { echo "/files : $count fichier(s), 3 attendus"; exit 1; }
+
+      - name: doctor.sh détecte les services actifs
+        run: |
+          ./doctor.sh > doctor-running.log 2>&1 && code=0 || code=$?
+          grep -E "Services|Backend|Frontend|RESULTAT" doctor-running.log
+          [ "$code" -eq 0 ] || { echo "doctor.sh signale un probleme bloquant ($code)"; exit 1; }
+          out=$(cat doctor-running.log)
+          case "$out" in *"[OK]   Backend : /health"*) ;; *) echo "doctor.sh n'a pas vu le backend"; exit 1 ;; esac
+          case "$out" in *"[OK]   Frontend : Streamlit repond"*) ;; *) echo "doctor.sh n'a pas vu le frontend"; exit 1 ;; esac
 
       - name: start.sh relancé = réutilise les services actifs (pas d'erreur de port)
         run: |
@@ -215,7 +231,25 @@ jobs:
           tail -n 25 setup-offline.log
           [ "$code" -eq 0 ] || { echo "setup.sh --offline a echoue ($code)"; exit 1; }
           grep -q "Mode hors-ligne" setup-offline.log || { echo "Le wheelhouse n'a pas ete utilise"; exit 1; }
+          # Le wheelhouse est prevu pour Python ${{ matrix.python }} : setup.sh doit avoir choisi
+          # ce Python-la (et non le 3.11 prefere par defaut) parmi ceux presents sur le runner.
+          v=$(.venv/bin/python -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+          [ "$v" = "${{ matrix.python }}" ] || { echo "venv en Python $v alors que le wheelhouse vise ${{ matrix.python }}"; exit 1; }
           ./test.sh -q -p no:cacheprovider
+
+      - name: setup.sh --offline refuse un wheelhouse prévu pour un autre Python
+        env:
+          PIP_INDEX_URL: http://127.0.0.1:9/simple
+        run: |
+          mv wheelhouse wheelhouse.ok
+          mkdir wheelhouse
+          touch wheelhouse/numpy-1.26.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+          ./setup.sh --offline > setup-mismatch.log 2>&1 && code=0 || code=$?
+          tail -n 6 setup-mismatch.log
+          rm -rf wheelhouse && mv wheelhouse.ok wheelhouse
+          [ "$code" -ne 0 ] || { echo "setup.sh aurait du refuser (venv non couvert par le wheelhouse)"; exit 1; }
+          grep -q "non couvert par le wheelhouse" setup-mismatch.log || { echo "Message d'erreur attendu absent"; exit 1; }
+          test -x .venv/bin/python || { echo "le .venv ne doit pas etre supprime sans --force"; exit 1; }
 
       - name: Logs (toujours)
         if: always()
@@ -305,6 +339,17 @@ jobs:
           .\test.ps1
           if ($LASTEXITCODE -ne 0) { throw "test.ps1 a echoue ($LASTEXITCODE)" }
 
+      - name: doctor.ps1 (diagnostic, services arrêtés)
+        run: |
+          $out = & { .\doctor.ps1 } 6>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out | Out-Host
+          if ($code -ne 0) { throw "doctor.ps1 signale un probleme bloquant ($code)" }
+          if (-not (($out -join "`n") -match "installation saine")) { throw "Verdict 'installation saine' absent" }
+          # Un utilisateur doit pouvoir rediriger la sortie dans un fichier pour la joindre a une demande d'aide
+          .\doctor.ps1 *> doctor.txt
+          if (-not ((Get-Content doctor.txt -Raw) -match "RESULTAT")) { throw "doctor.ps1 > fichier : verdict absent" }
+
       - name: start.ps1 -Background (backend + frontend), vérification HTTP
         run: |
           .\start.ps1 -Background -NoBrowser
@@ -339,6 +384,16 @@ jobs:
           $files = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/presentation/files?limit=5" -TimeoutSec 15
           if ($files.count -lt 3) { throw "/files : $($files.count) fichier(s), 3 attendus" }
           Write-Host "/files OK ($($files.count) fichiers dans $($files.directory))"
+
+      - name: doctor.ps1 détecte les services actifs
+        run: |
+          $out = & { .\doctor.ps1 } 6>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out | Where-Object { $_ -match "Services|Backend|Frontend|RESULTAT" } | Out-Host
+          if ($code -ne 0) { throw "doctor.ps1 signale un probleme bloquant ($code)" }
+          $text = $out -join "`n"
+          if ($text -notmatch [regex]::Escape("[OK]   Backend : /health")) { throw "doctor.ps1 n'a pas vu le backend" }
+          if ($text -notmatch [regex]::Escape("[OK]   Frontend : Streamlit repond")) { throw "doctor.ps1 n'a pas vu le frontend" }
 
       - name: start.ps1 relancé = réutilise les services actifs (pas d'erreur de port)
         run: |
@@ -389,8 +444,29 @@ jobs:
           $out | Select-Object -Last 25 | Out-Host
           if ($code -ne 0) { throw "setup.ps1 -Offline a echoue ($code)" }
           if (-not (($out -join "`n") -match "Mode hors-ligne")) { throw "Le wheelhouse n'a pas ete utilise" }
+          # Le wheelhouse est prevu pour Python ${{ matrix.python }} : setup.ps1 doit avoir choisi
+          # ce Python-la (et non le 3.11 prefere par defaut) parmi ceux presents sur le runner.
+          $v = (& .\.venv\Scripts\python.exe -c "import sys; print('%d.%d' % sys.version_info[:2])").Trim()
+          if ($v -ne "${{ matrix.python }}") { throw "venv en Python $v alors que le wheelhouse vise ${{ matrix.python }}" }
           .\test.ps1 -- -q -p no:cacheprovider
           if ($LASTEXITCODE -ne 0) { throw "test.ps1 (venv hors-ligne) a echoue" }
+
+      - name: setup.ps1 -Offline refuse un wheelhouse prévu pour un autre Python
+        env:
+          PIP_INDEX_URL: http://127.0.0.1:9/simple
+        run: |
+          Rename-Item wheelhouse wheelhouse.ok
+          New-Item -ItemType Directory wheelhouse | Out-Null
+          New-Item -ItemType File wheelhouse\numpy-1.26.4-cp39-cp39-win_amd64.whl | Out-Null
+          $out = & { .\setup.ps1 -Offline } 6>&1 | ForEach-Object { "$_" }
+          $code = $LASTEXITCODE
+          $out | Select-Object -Last 6 | Out-Host
+          Remove-Item -Recurse -Force wheelhouse
+          Rename-Item wheelhouse.ok wheelhouse
+          if ($code -eq 0) { throw "setup.ps1 aurait du refuser (venv non couvert par le wheelhouse)" }
+          if (-not (($out -join "`n") -match "non couvert par le wheelhouse")) { throw "Message d'erreur attendu absent" }
+          if (-not (Test-Path .\.venv\Scripts\python.exe)) { throw "le .venv ne doit pas etre supprime sans -Force" }
+          exit 0   # l'echec de setup.ps1 etait attendu : ne pas propager son $LASTEXITCODE
 
       - name: Logs (toujours)
         if: always()

@@ -47,6 +47,7 @@ cd Agent
 | `start.sh` | Lance les deux services en arrière-plan (logs dans `logs/backend.log` et `logs/frontend.log`, PIDs dans `logs/pids.env`). Options : `--foreground` (Ctrl+C arrête tout), `--backend-port N`, `--frontend-port N`, `--no-browser`, `--backend-only`, `--frontend-only`, `--no-reload` |
 | `stop.sh` | Arrête les processus lancés par `start.sh` et libère les ports du projet (uniquement s'ils sont tenus par un python du `.venv`) |
 | `test.sh` | `pytest tests/ -v` depuis `backend/` ; arguments transmis à pytest (`./test.sh -k baseload -x`) |
+| `doctor.sh` | Diagnostic en lecture seule (Python, paquets vs `constraints.txt`, `.env`/ports, services, réseau) ; code de sortie 1 si un problème bloquant est détecté |
 
 Les services sont détachés du terminal (`setsid`) : vous pouvez fermer la fenêtre, ils continuent
 de tourner jusqu'à `./stop.sh`. Relancer `./start.sh` alors qu'ils tournent ne provoque pas d'erreur
@@ -94,7 +95,7 @@ Python cibles sont des paramètres, pas ceux de la machine qui télécharge) :
 python scripts/make_wheelhouse.py                                  # pour cette machine
 python scripts/make_wheelhouse.py --platform win_amd64 --python-version 3.11 --zip   # pour un poste Windows
 python scripts/make_wheelhouse.py --all-platforms                  # tout (≈ 2 Go)
-# plateformes : win_amd64, linux_x86_64, linux_aarch64, macos_arm64, macos_x86_64
+# plateformes : win_amd64, linux_x86_64, macos_arm64, macos_x86_64
 ```
 
 Copiez le dossier `wheelhouse/` (ou `wheelhouse.zip` décompressé) à la racine du projet sur le
@@ -102,6 +103,13 @@ poste cible, puis `./setup.sh --offline` ou `.\setup.ps1 -Offline` : pip travail
 `--no-index --find-links wheelhouse`, sans aucun accès réseau. Python 3.10-3.12 doit déjà être
 présent sur le poste cible. Un `wheelhouse/` présent est aussi utilisé en priorité par une
 installation normale (PyPI ne sert qu'aux paquets manquants).
+
+Le wheelhouse est **spécifique à une version de Python et à une plateforme** (les wheels compilées
+numpy/pandas/pydantic-core… portent un tag `cp311`, `manylinux_x86_64`, `win_amd64`…). Les scripts
+d'installation lisent ces tags : ils privilégient un Python couvert parmi ceux installés et, en mode
+hors-ligne, refusent explicitement un `.venv` ou un interpréteur non couvert (le message donne la
+commande `make_wheelhouse.py` à relancer, ou `--force --python …` pour recréer le venv avec le bon
+Python). `./doctor.sh` / `.\doctor.ps1` affichent ce que contient un wheelhouse présent.
 
 ## Reproductibilité des dépendances (`constraints.txt`)
 
@@ -187,6 +195,12 @@ curl http://localhost:8501/_stcore/health     # -> ok
 
 ## Troubleshooting
 
+**Premier réflexe : `./doctor.sh` (Linux/macOS) ou `.\doctor.ps1` (Windows).** Le script ne modifie
+rien et passe en revue l'interpréteur, les paquets installés (versions attendues par `constraints.txt`,
+`pip check`), la configuration (`.env`, ports, `BACKEND_URL`, chemins, wheelhouse), les services (qui
+occupe les ports, `/health`, erreurs récentes dans `logs/`) et le réseau (proxy, PyPI, APIs). Joignez sa
+sortie complète à toute demande d'aide.
+
 **Windows (proxy, ExecutionPolicy, Python absent, ports occupés) :** voir [WINDOWS_SETUP.md – Dépannage](WINDOWS_SETUP.md#6-dépannage).
 
 **`setup.sh` : « Aucun Python 3.10 - 3.12 (64 bits) trouvé »**
@@ -245,7 +259,7 @@ curl http://localhost:8501/_stcore/health     # -> ok
 │   ├── concepts/ (capture_rate, baseload, BESS...)
 │   └── models/ (AFRY, Aurora)
 ├── docs/
-├── scripts/ (check_install.py, run_logged.py, make_wheelhouse.py, update_constraints.py,
+├── scripts/ (check_install.py, doctor.py, run_logged.py, make_wheelhouse.py, update_constraints.py,
 │             windows/common.ps1, unix/common.sh)
 ├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 (Windows)
 ├── setup.sh / start.sh / stop.sh / test.sh (Linux / macOS)

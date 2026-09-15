@@ -116,8 +116,12 @@ racine du projet sur le poste cible, puis :
 .\setup.ps1 -Offline          # pip --no-index --find-links .\wheelhouse : aucun accès réseau
 ```
 
-- La version de Python du wheelhouse doit être celle du poste cible (`--python-version 3.10|3.11|3.12`) ;
-  `--all-platforms` génère tout (Windows/Linux/macOS × 3.10/3.11/3.12, ≈ 2 Go) si vous ne savez pas à l'avance.
+- La version de Python du wheelhouse doit être celle du poste cible (`--python-version 3.10|3.11|3.12`) :
+  les wheels compilées (numpy, pandas, pydantic-core…) sont propres à une version. `setup.ps1` lit
+  le contenu du wheelhouse, choisit de préférence un Python qu'il couvre parmi ceux installés, et
+  refuse explicitement en `-Offline` un `.venv` ou un Python non couverts (message avec la commande
+  `make_wheelhouse.py` à relancer). `--all-platforms` génère tout (Windows/Linux/macOS × 3.10/3.11/3.12,
+  ≈ 2 Go) si vous ne savez pas à l'avance ; `.\doctor.ps1` affiche ce que contient un wheelhouse.
 - Python lui-même doit déjà être présent sur le poste (installeur python.org « pour moi
   uniquement », ou copiez aussi le dossier `.python\` d'un poste où `setup.ps1 -Portable` a été exécuté).
 - Sans `-Offline`, un `wheelhouse\` présent est quand même utilisé en priorité, PyPI ne servant
@@ -206,6 +210,20 @@ Les fichiers générés sont téléchargeables depuis la page *Presentation Buil
 
 ## 6. Dépannage
 
+### Premier réflexe : `.\doctor.ps1`
+
+```powershell
+.\doctor.ps1        # ou double-clic sur doctor.cmd
+```
+
+Diagnostic **en lecture seule** (rien n'est modifié), en cinq sections : interpréteur du `.venv`
+(version, 64 bits), paquets installés comparés à `constraints.txt` (+ `pip check`), configuration
+(`.env`, ports, cohérence `BACKEND_URL`/`BACKEND_PORT`, knowledge base, dossier des fichiers générés
+inscriptible, wheelhouse éventuel), services (ports 8000/8501 occupés et par quel processus, réponse
+de `/health`, dernières erreurs des logs) et réseau (proxy, `NO_PROXY`, PyPI, APIs publiques —
+informatif). Chaque ligne est `[OK]`, `[!!]` (avertissement) ou `[ERR]` (bloquant) ; le code de
+sortie vaut 1 s'il y a au moins un `[ERR]`. **Copiez la sortie complète dans toute demande d'aide.**
+
 ### « L'exécution de scripts est désactivée sur ce système »
 Politique d'exécution PowerShell restrictive (fréquent en entreprise). Sans admin :
 
@@ -217,7 +235,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-Les fichiers `setup.cmd` / `start.cmd` / `stop.cmd` appliquent automatiquement
+Les fichiers `setup.cmd` / `start.cmd` / `stop.cmd` / `doctor.cmd` appliquent automatiquement
 `-ExecutionPolicy Bypass` (double-clic).
 
 Si le dépôt a été téléchargé en ZIP, Windows peut marquer les fichiers comme

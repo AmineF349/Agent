@@ -58,6 +58,28 @@ fi
 VENV_DIR="$ROOT/.venv"
 VENV_PYTHON="$VENV_DIR/bin/python"
 
+# Versions de Python (3.10 / 3.11 / 3.12) et plateformes couvertes par le wheelhouse :
+# les wheels compilees (numpy, pandas, pydantic-core...) sont propres a UNE version.
+WHEELHOUSE_MINORS=""; WHEELHOUSE_PLATFORMS=""
+if ls "$WHEELHOUSE"/*.whl >/dev/null 2>&1; then
+    WHEELHOUSE_MINORS=$(wheelhouse_python_minors "$WHEELHOUSE")
+    WHEELHOUSE_PLATFORMS=$(wheelhouse_platforms "$WHEELHOUSE")
+fi
+# Vrai si le Python donne ($1) peut etre servi par le wheelhouse.
+wheelhouse_covers() {
+    local minor
+    [ -n "$WHEELHOUSE_MINORS" ] || return 0
+    read -r _ minor _ _ <<<"$(python_version_info "$1")"
+    case " $WHEELHOUSE_MINORS " in *" $minor "*) return 0 ;; *) return 1 ;; esac
+}
+wheelhouse_mismatch_hint() {  # $1 = Python concerne
+    local v
+    v=$("$1" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null)
+    fail "Le wheelhouse ($WHEELHOUSE) est prevu pour Python $(format_python_minors "$WHEELHOUSE_MINORS") et non pour Python $v."
+    info "Au choix : installez un Python couvert et relancez  ./setup.sh --offline --python /chemin/python3.${WHEELHOUSE_MINORS%% *}"
+    info "ou regenerez le wheelhouse pour ce Python :  python scripts/make_wheelhouse.py --platform $(current_platform | tr - _) --python-version $v"
+}
+
 # --- 1. Environnement virtuel existant ? -------------------------------------
 step "1/5" "Environnement virtuel .venv"
 if [ "$FORCE" -eq 1 ] && [ -d "$VENV_DIR" ]; then
@@ -66,10 +88,15 @@ if [ "$FORCE" -eq 1 ] && [ -d "$VENV_DIR" ]; then
 fi
 REUSE_VENV=0
 if [ -x "$VENV_PYTHON" ]; then
-    if python_supported "$VENV_PYTHON"; then
+    if python_supported "$VENV_PYTHON" && { [ "$OFFLINE" -eq 0 ] || wheelhouse_covers "$VENV_PYTHON"; }; then
         ok ".venv existant ($("$VENV_PYTHON" -c 'import platform; print("Python " + platform.python_version())')) reutilise."
         if [ -n "$PYTHON" ]; then warn "--python ignore : utilisez --force pour recreer le .venv avec cet interpreteur."; else info "Utilisez --force pour le recreer."; fi
         REUSE_VENV=1
+    elif python_supported "$VENV_PYTHON"; then
+        fail ".venv existant ($("$VENV_PYTHON" -c 'import platform; print("Python " + platform.python_version())')) non couvert par le wheelhouse (Python $(format_python_minors "$WHEELHOUSE_MINORS")) : inutilisable hors-ligne."
+        info "Relancez avec --force pour le recreer avec un Python couvert (ajoutez --python /chemin/python3.${WHEELHOUSE_MINORS%% *} si besoin),"
+        info "ou regenerez le wheelhouse pour ce Python :  python scripts/make_wheelhouse.py --platform $(current_platform | tr - _) --python-version $("$VENV_PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+        exit 1
     else
         warn ".venv existant invalide (Python desinstalle ou version non supportee) : recreation."
         rm -rf "$VENV_DIR"
@@ -90,7 +117,8 @@ else
         fi
         PYTHON_EXE="$PYTHON"
     else
-        PYTHON_EXE=$(find_python "$ROOT" || true)
+        # Avec un wheelhouse, on privilegie un Python qu'il couvre (3.11 > 3.12 > 3.10 sinon)
+        PYTHON_EXE=$(find_python "$ROOT" "$WHEELHOUSE_MINORS" || true)
         if [ -z "$PYTHON_EXE" ]; then
             warn "Aucun Python 3.10 - 3.12 (64 bits) trouve sur ce poste."
             info "(Python 3.13+ ne convient pas : pas de wheels pour numpy/pandas/pydantic)"
@@ -100,6 +128,13 @@ else
     fi
     read -r MAJ MIN PATCH BITS <<<"$(python_version_info "$PYTHON_EXE")"
     ok "Python $MAJ.$MIN.$PATCH (${BITS} bits) : $PYTHON_EXE"
+    if [ -n "$WHEELHOUSE_MINORS" ] && ! wheelhouse_covers "$PYTHON_EXE"; then
+        if [ "$OFFLINE" -eq 1 ]; then
+            wheelhouse_mismatch_hint "$PYTHON_EXE"
+            exit 1
+        fi
+        warn "Le wheelhouse couvre Python $(format_python_minors "$WHEELHOUSE_MINORS") : les wheels compilees pour Python $MAJ.$MIN viendront de PyPI."
+    fi
 
     info "Creation du venv : $VENV_DIR"
     if ! "$PYTHON_EXE" -m venv "$VENV_DIR" 2>/tmp/pmia_venv_err.log || [ ! -x "$VENV_PYTHON" ]; then
@@ -123,11 +158,21 @@ export PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUTF8=1
 PIP_SOURCE=()
 if ls "$WHEELHOUSE"/*.whl >/dev/null 2>&1; then
     PIP_SOURCE+=(--find-links "$WHEELHOUSE")
+    WH_DESC="$(ls "$WHEELHOUSE"/*.whl | wc -l | tr -d ' ') wheels"
+    [ -n "$WHEELHOUSE_MINORS" ] && WH_DESC="$WH_DESC, Python $(format_python_minors "$WHEELHOUSE_MINORS"), ${WHEELHOUSE_PLATFORMS:-plateforme inconnue}"
     if [ "$OFFLINE" -eq 1 ]; then
         PIP_SOURCE+=(--no-index)
-        ok "Mode hors-ligne : wheels lues dans $WHEELHOUSE (aucun acces reseau)"
+        ok "Mode hors-ligne : wheels lues dans $WHEELHOUSE ($WH_DESC ; aucun acces reseau)"
+        if [ -n "$WHEELHOUSE_PLATFORMS" ]; then
+            case " $WHEELHOUSE_PLATFORMS " in
+                *" $(current_platform) "*) ;;
+                *) fail "Ce poste est en $(current_platform) mais le wheelhouse ne contient que : $WHEELHOUSE_PLATFORMS."
+                   info "Regenerez-le :  python scripts/make_wheelhouse.py --platform $(current_platform | tr - _) --python-version $("$VENV_PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+                   exit 1 ;;
+            esac
+        fi
     else
-        ok "Wheelhouse detecte : $WHEELHOUSE (PyPI utilise seulement pour les paquets absents)"
+        ok "Wheelhouse detecte : $WHEELHOUSE ($WH_DESC ; PyPI utilise seulement pour les paquets absents)"
     fi
 fi
 
@@ -147,8 +192,9 @@ info "pip install --only-binary :all: -r requirements.txt -c constraints.txt$([ 
 if ! "$VENV_PYTHON" "${PIP_ARGS[@]}"; then
     fail "Installation des dependances echouee."
     if [ "$OFFLINE" -eq 1 ]; then
-        info "Le wheelhouse doit correspondre a CETTE plateforme et a CE Python ($("$VENV_PYTHON" -c 'import sys, platform; print(f"{sys.version_info[0]}.{sys.version_info[1]} {sys.platform} {platform.machine()}")')) :"
-        info "    python scripts/make_wheelhouse.py --platform <linux_x86_64|macos_arm64|...> --python-version 3.x"
+        info "Le wheelhouse doit correspondre a CETTE plateforme et a CE Python ($(current_platform), Python $("$VENV_PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')) ;"
+        info "il contient : ${WHEELHOUSE_PLATFORMS:-?} / Python $(format_python_minors "$WHEELHOUSE_MINORS"). Pour le regenerer :"
+        info "    python scripts/make_wheelhouse.py --platform $(current_platform | tr - _) --python-version $("$VENV_PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
     else
         show_proxy_hint
         info "Verifiez aussi que la version de Python est 3.10, 3.11 ou 3.12 en 64 bits (pas 3.13+)."

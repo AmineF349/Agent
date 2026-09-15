@@ -1,0 +1,20 @@
+# Fins de ligne coherentes quel que soit l'OS du poste et son reglage core.autocrlf.
+* text=auto
+
+# Scripts bash / Python / workflows : toujours LF (bash refuse les CRLF).
+*.sh  text eol=lf
+*.py  text eol=lf
+*.yml text eol=lf
+
+# Scripts cmd.exe : CRLF (cmd.exe gere mal certains fichiers LF).
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binaires
+*.png  binary
+*.jpg  binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.pdf  binary
+*.whl  binary

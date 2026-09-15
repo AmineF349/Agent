@@ -246,10 +246,10 @@ Sinon, tout marche en mode fallback.
 │   ├── launch.json
 │   ├── tasks.json
 │   └── extensions.json
-├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1   (Windows)
-├── setup.cmd / start.cmd / stop.cmd               (double-clic, contourne ExecutionPolicy)
-├── setup.sh / start.sh / stop.sh / test.sh        (Linux / macOS)
-├── scripts/ (check_install.py, run_logged.py, make_wheelhouse.py, update_constraints.py, windows/, unix/)
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 / doctor.ps1   (Windows)
+├── setup.cmd / start.cmd / stop.cmd / doctor.cmd               (double-clic, contourne ExecutionPolicy)
+├── setup.sh / start.sh / stop.sh / test.sh / doctor.sh        (Linux / macOS)
+├── scripts/ (check_install.py, doctor.py, run_logged.py, make_wheelhouse.py, update_constraints.py, windows/, unix/)
 ├── requirements.txt (backend + frontend, wheels précompilées uniquement)
 ├── requirements-dev.txt
 ├── constraints.txt (verrou des dépendances transitives, toutes plateformes)
@@ -280,6 +280,7 @@ pas de compilateur (toutes les dépendances sont installées en wheels précompi
 | `start.ps1` | Lance backend (uvicorn :8000) + frontend (Streamlit :8501) dans deux fenêtres, attend `/health`, ouvre le navigateur. Options : `-Background`, `-BackendPort`, `-FrontendPort`, `-NoBrowser`, `-BackendOnly`, `-FrontendOnly`, `-NoReload` |
 | `stop.ps1` | Arrête proprement les deux services |
 | `test.ps1` | Lance `pytest` |
+| `doctor.ps1` | Diagnostic en lecture seule : Python, paquets vs `constraints.txt`, `.env`/ports, services, réseau. À joindre à toute demande d'aide |
 
 Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
 
@@ -290,6 +291,7 @@ Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/
 ./start.sh         # --foreground, --backend-port, --frontend-port, --no-browser, --backend-only, --frontend-only
 ./stop.sh
 ./test.sh
+./doctor.sh        # diagnostic (Python, paquets, .env, ports, services, réseau)
 ```
 
 Pas de Python 3.10-3.12 ? Sans droits root : `curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.11`
@@ -302,6 +304,9 @@ python scripts/make_wheelhouse.py --platform win_amd64 --python-version 3.11 --z
 # copier wheelhouse/ à la racine du projet sur le poste cible, puis :
 .\setup.ps1 -Offline      # ou ./setup.sh --offline  -> pip --no-index, zéro réseau
 ```
+
+Le wheelhouse est propre à une plateforme et à une version de Python : `setup.*` le lit, choisit un
+Python couvert et refuse explicitement en hors-ligne un `.venv`/Python non couvert.
 
 Les dépendances indirectes sont figées dans `constraints.txt` (résolution universelle Windows/Linux/macOS,
 Python 3.10-3.12) : le même environnement partout, sans image Docker. Détails : [docs/INSTALLATION.md](docs/INSTALLATION.md).
@@ -350,7 +355,8 @@ CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Ubu
 d'installation et de lancement : `setup.sh` / `start.sh` / `stop.sh` sur Ubuntu et macOS, `setup.ps1` / `start.ps1` / `stop.ps1`
 sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus), avec vérification HTTP du backend et du frontend,
 génération/téléchargement d'un PPTX de bout en bout, et installation **hors-ligne** (wheelhouse + `--offline` / `-Offline`
-avec réseau coupé). La CI vérifie aussi que `constraints.txt` est à jour.
+avec réseau coupé, y compris le refus d'un wheelhouse prévu pour un autre Python). La CI vérifie aussi que
+`constraints.txt` est à jour et lance `doctor.py` sur chaque plateforme.
 
 Via VS Code: Onglet Testing -> ▶️
 

@@ -61,8 +61,10 @@ python_supported() {
 }
 
 # Premier Python 3.10-3.12 (64 bits) trouve ; preference 3.11 > 3.12 > 3.10.
+# Argument 2 optionnel : versions mineures a privilegier (ex: "10 11", celles
+# couvertes par le wheelhouse) ; elles passent devant toutes les autres.
 find_python() {
-    local root="$1" name exe
+    local root="$1" preferred="${2:-}" name exe
     local -a candidates=()
     for name in python3.11 python3.12 python3.10 python3 python; do
         exe=$(command -v "$name" 2>/dev/null) && candidates+=("$exe")
@@ -84,6 +86,9 @@ find_python() {
         python_supported "$exe" || continue
         info=$(python_version_info "$exe"); read -r _ minor _ _ <<<"$info"
         case "$minor" in 11) rank=0 ;; 12) rank=1 ;; *) rank=2 ;; esac
+        if [ -n "$preferred" ]; then
+            case " $preferred " in *" $minor "*) ;; *) rank=$((rank + 10)) ;; esac
+        fi
         if [ "$rank" -lt "$best_rank" ]; then best="$exe"; best_rank="$rank"; fi
     done
     [ -n "$best" ] && printf '%s\n' "$best"
@@ -110,6 +115,54 @@ EOF
 venv_python() {
     local exe="$1/.venv/bin/python"
     [ -x "$exe" ] && printf '%s\n' "$exe"
+}
+
+# ----------------------------------------------------------------------------
+# Wheelhouse (installation hors-ligne)
+# ----------------------------------------------------------------------------
+# Versions mineures de Python couvertes par un wheelhouse ("10 11 12"), d'apres
+# les tags cp3XY-cp3XY des wheels compilees (numpy, pandas, pydantic-core...).
+# Les wheels pures (py3-none-any) et abi3 conviennent a toutes les versions.
+# Vide si le dossier ne contient aucune wheel compilee. Retourne toujours 0.
+wheelhouse_python_minors() {
+    local dir="$1"
+    [ -d "$dir" ] || return 0
+    ls "$dir" 2>/dev/null | sed -n -E 's/^.*-cp3([0-9]+)-cp3[0-9]+-.*\.whl$/\1/p' | sort -un | tr '\n' ' ' | sed 's/ $//'
+    return 0
+}
+
+# "10 12" -> "3.10, 3.12"
+format_python_minors() {
+    local out="" m
+    for m in $1; do out="$out, 3.$m"; done
+    printf '%s\n' "${out#, }"
+}
+
+# Familles de plateformes presentes dans un wheelhouse (ex: "linux-x86_64 macos-arm64").
+wheelhouse_platforms() {
+    local dir="$1" names out=""
+    [ -d "$dir" ] || return 0
+    names=$(ls "$dir" 2>/dev/null | grep -E '\-cp3[0-9]+-cp3[0-9]+-' || true)
+    case "$names" in *win_amd64*) out="$out windows-x64" ;; esac
+    case "$names" in *manylinux*x86_64*) out="$out linux-x86_64" ;; esac
+    # macOS : seules les wheels mono-architecture qualifient (ni universal2, ni les
+    # noms multi-tags comme macosx_10_15_x86_64.macosx_11_0_arm64 d'orjson)
+    # (pas de grep -q : sous pipefail une sortie anticipee provoquerait un SIGPIPE)
+    [ -n "$(printf '%s\n' "$names" | grep -E 'macosx[^-]*arm64' | grep -v x86_64)" ] && out="$out macos-arm64"
+    [ -n "$(printf '%s\n' "$names" | grep -E 'macosx[^-]*x86_64' | grep -v arm64)" ] && out="$out macos-x86_64"
+    printf '%s\n' "${out# }"
+    return 0
+}
+
+# Plateforme courante dans le meme vocabulaire (pour comparer avec wheelhouse_platforms).
+current_platform() {
+    local machine
+    machine=$(uname -m 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    case "$(uname -s 2>/dev/null)" in
+        Darwin) case "$machine" in arm64|aarch64) echo "macos-arm64" ;; *) echo "macos-x86_64" ;; esac ;;
+        Linux)  case "$machine" in x86_64|amd64) echo "linux-x86_64" ;; *) echo "linux-$machine" ;; esac ;;
+        *)      echo "$(uname -s)-$machine" ;;
+    esac
 }
 
 python_has_module() { "$1" -c "import $2" >/dev/null 2>&1; }

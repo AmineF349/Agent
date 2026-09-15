@@ -64,6 +64,7 @@ pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt
 - **Run Backend (venv)**: lance backend sans debug (interpréteur `.venv`)
 - **Run Frontend (venv)**: lance frontend sans debug
 - **Run Tests (venv)**: pytest
+- **Diagnostic (doctor)**: `scripts/doctor.py` en lecture seule (Python, paquets, `.env`/ports, services, réseau) — à joindre à toute demande d'aide
 - **Lint Backend (flake8)**
 
 Les tâches « Run … (venv) » fonctionnent sur toutes les plateformes (l'interpréteur `.venv` est résolu

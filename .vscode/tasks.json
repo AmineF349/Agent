@@ -239,6 +239,36 @@
             "problemMatcher": []
         },
         {
+            "label": "Diagnostic (doctor)",
+            "detail": "Python, paquets vs constraints.txt, .env/ports, services, reseau - lecture seule",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "windows": {
+                "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/.venv/bin/python"
+            },
+            "args": [
+                "${workspaceFolder}/scripts/doctor.py"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONUTF8": "1"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Lint Backend (flake8)",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

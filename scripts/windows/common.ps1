@@ -189,7 +189,9 @@ function Test-PythonVersion([string] $Exe) {
     return (Test-PythonSupported (Get-PythonVersionInfo $Exe))
 }
 
-function Find-Python([string] $Root) {
+function Find-Python([string] $Root, [int[]] $PreferredMinors = @()) {
+    # $PreferredMinors : versions mineures a privilegier (ex: celles couvertes par
+    # le wheelhouse) ; elles passent devant toutes les autres.
     $candidates = New-Object System.Collections.Generic.List[string]
 
     # 0. Python portable du projet (installe par -Portable)
@@ -270,7 +272,9 @@ function Find-Python([string] $Root) {
     }
     if ($valid.Count -eq 0) { return $null }
     $pref = @{ 11 = 0; 12 = 1; 10 = 2 }
-    $best = $valid | Sort-Object { $pref[[int]$_.Minor] }, { -$_.Patch } | Select-Object -First 1
+    $best = $valid |
+        Sort-Object { if ($PreferredMinors.Count -gt 0 -and $PreferredMinors -notcontains [int]$_.Minor) { 1 } else { 0 } }, { $pref[[int]$_.Minor] }, { -$_.Patch } |
+        Select-Object -First 1
     return $best.Exe
 }
 
@@ -409,6 +413,43 @@ function Get-VenvPython([string] $Root) {
     $exe = Join-Path $Root ".venv\Scripts\python.exe"
     if (Test-Path $exe) { return $exe }
     return $null
+}
+
+# ----------------------------------------------------------------------------
+# Wheelhouse (installation hors-ligne)
+# ----------------------------------------------------------------------------
+function Get-WheelhouseInfo([string] $Dir) {
+    <#
+        Ce que contient un wheelhouse, d'apres les noms de fichiers :
+        - PythonMinors : versions mineures couvertes (10, 11, 12) d'apres les tags
+          cp3XY-cp3XY des wheels compilees (numpy, pandas, pydantic-core...) ;
+          les wheels pures (py3-none-any) et abi3 conviennent a toutes les versions.
+        - Platforms : familles de plateformes presentes (windows-x64, linux-x86_64...).
+        - Count : nombre total de wheels.
+    #>
+    $info = [pscustomobject]@{ Count = 0; PythonMinors = @(); Platforms = @() }
+    if (-not $Dir -or -not (Test-Path $Dir)) { return $info }
+    $wheels = @(Get-ChildItem -Path $Dir -Filter "*.whl" -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+    $info.Count = $wheels.Count
+    $compiled = @($wheels | Where-Object { $_ -match '-cp3\d+-cp3\d+-' })
+    $minors = @{}
+    $platforms = @{}
+    foreach ($w in $compiled) {
+        if ($w -match '-cp3(\d+)-cp3\d+-') { $minors[[int]$Matches[1]] = $true }
+        if ($w -match 'win_amd64') { $platforms["windows-x64"] = $true }
+        if ($w -match 'manylinux.*x86_64') { $platforms["linux-x86_64"] = $true }
+        # macOS : seules les wheels mono-architecture qualifient (ni universal2, ni les
+        # noms multi-tags comme macosx_10_15_x86_64.macosx_11_0_arm64 d'orjson)
+        if ($w -match 'macosx.*arm64' -and $w -notmatch 'x86_64') { $platforms["macos-arm64"] = $true }
+        if ($w -match 'macosx.*x86_64' -and $w -notmatch 'arm64') { $platforms["macos-x86_64"] = $true }
+    }
+    $info.PythonMinors = @($minors.Keys | Sort-Object)
+    $info.Platforms = @($platforms.Keys | Sort-Object)
+    return $info
+}
+
+function Format-PythonMinors([int[]] $Minors) {
+    return (($Minors | ForEach-Object { "3.$_" }) -join ", ")
 }
 
 function Test-PortInUse([int] $Port) {

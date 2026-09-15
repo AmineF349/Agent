@@ -59,10 +59,6 @@ TARGETS = {
         "platforms": ["manylinux_2_28_x86_64", "manylinux_2_17_x86_64", "manylinux2014_x86_64", "manylinux_2_5_x86_64", "manylinux1_x86_64"],
         "env": {"sys_platform": "linux", "os_name": "posix", "platform_system": "Linux", "platform_machine": "x86_64"},
     },
-    "linux_aarch64": {
-        "platforms": ["manylinux_2_28_aarch64", "manylinux_2_17_aarch64", "manylinux2014_aarch64"],
-        "env": {"sys_platform": "linux", "os_name": "posix", "platform_system": "Linux", "platform_machine": "aarch64"},
-    },
     "macos_arm64": {
         "platforms": ["macosx_14_0_arm64"],
         "env": {"sys_platform": "darwin", "os_name": "posix", "platform_system": "Darwin", "platform_machine": "arm64"},
@@ -82,7 +78,9 @@ def current_target() -> str:
         return "win_amd64"
     if sys.platform == "darwin":
         return "macos_arm64" if machine == "arm64" else "macos_x86_64"
-    return "linux_aarch64" if machine in ("aarch64", "arm64") else "linux_x86_64"
+    if machine in ("aarch64", "arm64"):
+        raise SystemExit("Linux ARM64 n'est pas supporte (polars 0.20.22 n'a pas de wheel aarch64) : precisez --platform pour une autre cible.")
+    return "linux_x86_64"
 
 
 def marker_environment(target: str, python_version: str) -> dict:

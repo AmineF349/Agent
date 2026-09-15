@@ -78,6 +78,25 @@ if ($Offline -and -not $HasWheelhouse) {
     Write-Info "    python scripts\make_wheelhouse.py --platform win_amd64 --python-version 3.11"
     exit 1
 }
+# Versions de Python (3.10 / 3.11 / 3.12) et plateformes couvertes par le wheelhouse :
+# les wheels compilees (numpy, pandas, pydantic-core...) sont propres a UNE version.
+$WheelhouseInfo = $null
+[int[]] $WheelhouseMinors = @()
+if ($HasWheelhouse) {
+    $WheelhouseInfo = Get-WheelhouseInfo $Wheelhouse
+    $WheelhouseMinors = [int[]] $WheelhouseInfo.PythonMinors
+}
+function Test-WheelhouseCovers($Info) {
+    # Vrai si le Python decrit par $Info (Get-PythonVersionInfo) peut etre servi par le wheelhouse.
+    if ($WheelhouseMinors.Count -eq 0) { return $true }
+    return ($Info -and ($WheelhouseMinors -contains [int]$Info.Minor))
+}
+function Write-WheelhouseMismatch($Info) {
+    $v = "$($Info.Major).$($Info.Minor)"
+    Write-Fail "Le wheelhouse ($Wheelhouse) est prevu pour Python $(Format-PythonMinors $WheelhouseMinors) et non pour Python $v."
+    Write-Info "Au choix : installez un Python couvert (python.org, 'Install for me only') et relancez  .\setup.ps1 -Offline -Python <chemin\python.exe>"
+    Write-Info "ou regenerez le wheelhouse pour ce Python :  python scripts\make_wheelhouse.py --platform win_amd64 --python-version $v"
+}
 if (Test-IsAdmin) {
     Write-Warn "Script lance en tant qu'administrateur : ce n'est pas necessaire (et deconseille)."
 }
@@ -99,11 +118,16 @@ if ($Force -and (Test-Path $VenvDir)) {
 $reuseVenv = $false
 if (Test-Path $VenvPython) {
     $venvInfo = Get-PythonVersionInfo $VenvPython
-    if (Test-PythonSupported $venvInfo) {
+    if ((Test-PythonSupported $venvInfo) -and (-not $Offline -or (Test-WheelhouseCovers $venvInfo))) {
         Write-Ok ".venv existant (Python $($venvInfo.Major).$($venvInfo.Minor).$($venvInfo.Patch)) reutilise."
         if ($Python -or $Portable) { Write-Warn "-Python / -Portable ignores : utilisez -Force pour recreer le .venv avec cet interpreteur." }
         else { Write-Info "Utilisez -Force pour le recreer." }
         $reuseVenv = $true
+    } elseif (Test-PythonSupported $venvInfo) {
+        Write-Fail ".venv existant (Python $($venvInfo.Major).$($venvInfo.Minor).$($venvInfo.Patch)) non couvert par le wheelhouse (Python $(Format-PythonMinors $WheelhouseMinors)) : inutilisable hors-ligne."
+        Write-Info "Relancez avec -Force pour le recreer avec un Python couvert (ajoutez -Python <chemin\python.exe> si besoin),"
+        Write-Info "ou regenerez le wheelhouse pour ce Python :  python scripts\make_wheelhouse.py --platform win_amd64 --python-version $($venvInfo.Major).$($venvInfo.Minor)"
+        exit 1
     } else {
         Write-Warn ".venv existant invalide (Python desinstalle ou version non supportee) : recreation."
         Remove-Item -Recurse -Force $VenvDir
@@ -137,7 +161,8 @@ if ($reuseVenv) {
             exit 1
         }
     } else {
-        $PythonExe = Find-Python -Root $Root
+        # Avec un wheelhouse, on privilegie un Python qu'il couvre (3.11 > 3.12 > 3.10 sinon)
+        $PythonExe = Find-Python -Root $Root -PreferredMinors $WheelhouseMinors
         if (-not $PythonExe) {
             Write-Warn "Aucun Python 3.10 - 3.12 (64 bits) trouve sur ce poste."
             Write-Info "(Python 3.13+ ou 32 bits ne convient pas : pas de wheels pour numpy/pandas/pydantic)"
@@ -155,6 +180,10 @@ if ($reuseVenv) {
 
     $pyInfo = Get-PythonVersionInfo $PythonExe
     Write-Ok "Python $($pyInfo.Major).$($pyInfo.Minor).$($pyInfo.Patch) ($($pyInfo.Arch)) : $PythonExe"
+    if ($WheelhouseMinors.Count -gt 0 -and -not (Test-WheelhouseCovers $pyInfo)) {
+        if ($Offline) { Write-WheelhouseMismatch $pyInfo; exit 1 }
+        Write-Warn "Le wheelhouse couvre Python $(Format-PythonMinors $WheelhouseMinors) : les wheels compilees pour Python $($pyInfo.Major).$($pyInfo.Minor) viendront de PyPI."
+    }
 
     Write-Info "Creation du venv : $VenvDir"
     $r = Invoke-Native -Exe $PythonExe -Arguments @("-m", "venv", $VenvDir) -Quiet
@@ -173,15 +202,24 @@ $env:PIP_DISABLE_PIP_VERSION_CHECK = "1"
 $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
+$venvPyDesc = (Invoke-Native -Exe $VenvPython -Arguments @("-c", "import sys; print('%d.%d' % sys.version_info[:2])") -Quiet).Output.Trim()
+
 # Source des paquets : PyPI (ou index interne via PIP_INDEX_URL), wheelhouse local, ou les deux.
 $pipSource = @()
 if ($HasWheelhouse) {
     $pipSource += @("--find-links", $Wheelhouse)
+    $whDesc = "$($WheelhouseInfo.Count) wheels"
+    if ($WheelhouseMinors.Count -gt 0) { $whDesc += ", Python $(Format-PythonMinors $WheelhouseMinors), $(if ($WheelhouseInfo.Platforms) { $WheelhouseInfo.Platforms -join ' ' } else { 'plateforme inconnue' })" }
     if ($Offline) {
         $pipSource += @("--no-index")
-        Write-Ok "Mode hors-ligne : wheels lues dans $Wheelhouse (aucun acces reseau)"
+        Write-Ok "Mode hors-ligne : wheels lues dans $Wheelhouse ($whDesc ; aucun acces reseau)"
+        if ($WheelhouseInfo.Platforms -and ($WheelhouseInfo.Platforms -notcontains "windows-x64")) {
+            Write-Fail "Ce poste est un Windows 64 bits mais le wheelhouse ne contient que : $($WheelhouseInfo.Platforms -join ', ')."
+            Write-Info "Regenerez-le :  python scripts\make_wheelhouse.py --platform win_amd64 --python-version $venvPyDesc"
+            exit 1
+        }
     } else {
-        Write-Ok "Wheelhouse detecte : $Wheelhouse (PyPI utilise seulement pour les paquets absents)"
+        Write-Ok "Wheelhouse detecte : $Wheelhouse ($whDesc ; PyPI utilise seulement pour les paquets absents)"
     }
 }
 
@@ -209,9 +247,10 @@ $r = Invoke-Native -Exe $VenvPython -Arguments $pipArgs
 if ($r.ExitCode -ne 0) {
     Write-Fail "Installation des dependances echouee (code $($r.ExitCode))."
     if ($Offline) {
-        $pyDesc = (Invoke-Native -Exe $VenvPython -Arguments @("-c", "import sys; print('%d.%d' % sys.version_info[:2])") -Quiet).Output.Trim()
-        Write-Info "Le wheelhouse doit correspondre a Windows 64 bits et a ce Python ($pyDesc) :"
-        Write-Info "    python scripts\make_wheelhouse.py --platform win_amd64 --python-version $pyDesc"
+        $whPlatforms = if ($WheelhouseInfo.Platforms) { $WheelhouseInfo.Platforms -join ', ' } else { '?' }
+        Write-Info "Le wheelhouse doit correspondre a Windows 64 bits et a ce Python ($venvPyDesc) ;"
+        Write-Info "il contient : $whPlatforms / Python $(Format-PythonMinors $WheelhouseMinors). Pour le regenerer :"
+        Write-Info "    python scripts\make_wheelhouse.py --platform win_amd64 --python-version $venvPyDesc"
     } else {
         Show-ProxyHint
         Write-Info "Verifiez aussi que la version de Python est 3.10, 3.11 ou 3.12 en 64 bits (pas 3.13+, pas 32 bits)."
