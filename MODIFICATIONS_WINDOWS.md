@@ -9,7 +9,8 @@
 |---|---|
 | **Branche** | `arena/01a0a4e1-agent` |
 | **PR** | [#2](https://github.com/AmineF349/Agent/pull/2) → base `arena/01a09f1d-agent` |
-| **Volume** | 28 fichiers, +2838 / −82 (**16 créés, 12 modifiés**) |
+| **Volume** | **28 fichiers : 16 créés, 12 modifiés** |
+| **Diff exact** | voir l'onglet *Files changed* de la PR #2 (les compteurs de lignes de ce tableau seraient faux dès le prochain commit) |
 | **Objectif** | Installer et lancer 100 % du projet sur Windows, **sans Docker Desktop** et **sans droits administrateur** |
 
 ---
