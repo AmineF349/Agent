@@ -15,12 +15,14 @@
 #     utilise par le code (aucun import), c'etait un artefact de docker-compose.
 #   - uvicorn[standard] : identique, uvloop est automatiquement exclu sous
 #     Windows (marqueur d'environnement) ; le rechargement utilise watchfiles.
+#   - pydantic 2.7.4 (aligne dans backend/requirements.txt) : 2.6.x plante sur
+#     Python >= 3.12.4 (TypeError ForwardRef._evaluate ... recursive_guard).
 # =============================================================================
 
 # --- Backend : API ---
 fastapi==0.110.0
 uvicorn[standard]==0.29.0
-pydantic==2.6.3
+pydantic==2.7.4  # >=2.7.4 requis pour Python 3.12.4+ (ForwardRef._evaluate) ; wheels cp310-312
 pydantic-settings==2.1.0
 python-multipart==0.0.9
 python-dotenv==1.0.1
