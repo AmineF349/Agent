@@ -37,12 +37,12 @@
 │  └──────────────────────────────────────────────────────────┘   │
 └──────────────────────────┬──────────────────────────────────────┘
                            │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-        ┌──────────┐ ┌──────────┐ ┌──────────┐
-        │ Postgres │ │  SQLite  │ │  Files   │
-        │ (Docker) │ │ (local)  │ │ generated│
-        └──────────┘ └──────────┘ └──────────┘
+                           ▼
+                ┌────────────────────┐
+                │ Persistance fichiers│
+                │ backend/generated/  │
+                │ knowledge_base/*.md │
+                └────────────────────┘
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
@@ -64,13 +64,13 @@
 
 ### Backend
 
-- **Framework**: FastAPI 0.110 (Python 3.11)
+- **Framework**: FastAPI 0.110 (Python 3.10 - 3.12)
 - **Data**: Pandas 2.2, Polars 0.20, Numpy 1.26, Scipy 1.12
 - **IA**: LangChain 0.1, LangGraph 0.0, OpenAI 1.30, Anthropic 0.28, tiktoken
 - **Visu**: Plotly 5.19, Matplotlib 3.8
 - **Presentation**: python-pptx 0.6, python-docx 1.1, reportlab 4.1
 - **Connectors**: requests, httpx, entsoe-py 0.6
-- **DB**: SQLAlchemy 2.0, psycopg2, alembic
+- **Persistance**: fichiers (aucune base de données)
 - **Utils**: tenacity, structlog, orjson, aiofiles
 
 ### Frontend
@@ -82,9 +82,12 @@
 
 ### Infra
 
-- **Windows natif (sans Docker / sans admin)**: `setup.ps1`, `start.ps1`, `stop.ps1`, `test.ps1`, `scripts/windows/common.ps1`, `requirements-windows.txt` (un seul `.venv` backend + frontend, wheels précompilées uniquement)
-- **Docker (optionnel)**: Dockerfile.backend, Dockerfile.frontend, docker-compose.yml
-- **Persistance**: fichiers uniquement (`backend/generated/`, `knowledge_base/`). Le service Postgres de docker-compose n'est **pas utilisé par le code** (aucun import sqlalchemy/psycopg2) ; `DATABASE_URL` est ignorée.
+- **100 % natif, sans Docker** : un seul `.venv` (backend + frontend) créé à partir de `requirements.txt` (wheels précompilées uniquement, Python 3.10-3.12 64 bits)
+- **Windows (sans admin)** : `setup.ps1`, `start.ps1`, `stop.ps1`, `test.ps1` + `scripts/windows/common.ps1` (lanceurs `.cmd` pour le double-clic)
+- **Linux / macOS** : `setup.sh`, `start.sh`, `stop.sh`, `test.sh` + `scripts/unix/common.sh`
+- **Communs** : `scripts/check_install.py` (vérification post-installation), `scripts/run_logged.py` (lancement d'un service avec stdout+stderr fusionnés dans `logs/*.log`)
+- **Persistance**: fichiers uniquement (`backend/generated/`, `knowledge_base/`). Aucune base de données, aucun service tiers à installer.
+- **CI** : `.github/workflows/ci.yml` — pytest Ubuntu 3.10/3.11/3.12, puis exécution réelle des scripts sur Ubuntu, macOS et Windows (PS 5.1 + PS 7, Python portable)
 - **Chemins**: résolus de façon absolue par `backend/app/core/paths.py` et `frontend/utils/paths.py` (surcharge via `GENERATED_DIR`, `KNOWLEDGE_BASE_DIR`, `DATA_SAMPLES_DIR`, `PMIA_ENV_FILE`) → indépendance du répertoire courant
 - **IDE**: VS Code avec settings, launch, tasks, extensions
 
@@ -402,7 +405,9 @@
 
 - `api_client.py`: APIClient class avec methods health, market_analysis, data_quality_csv, challenge_scenario, prepare_meeting, generate_minutes, generate_presentation, knowledge_search, fetch_market_data, live_prices, agent_chat, bess_revenue
 
-## Lancement Windows natif (sans Docker)
+## Lancement natif
+
+### Windows (`start.ps1`)
 
 ```
 start.ps1 ──► powershell.exe  .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   (cwd backend/)
@@ -412,24 +417,28 @@ start.ps1 ──► powershell.exe  .venv\Scripts\python.exe -m uvicorn app.main
 stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/8501 s'ils sont tenus par un python du .venv
 ```
 
-- `setup.ps1` : détection Python 3.10-3.12 x64 (py launcher, PATH, LocalAppData, conda, scoop, `.python\`) → sinon installation « pour moi uniquement » (python.org, `InstallAllUsers=0`) ou Python portable (paquet nuget PSF extrait dans `.python\`) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements-windows.txt` → `.env` → `scripts/windows/check_install.py`.
+- `setup.ps1` : détection Python 3.10-3.12 x64 (py launcher, PATH, LocalAppData, conda, scoop, `.python\`) → sinon installation « pour moi uniquement » (python.org, `InstallAllUsers=0`) ou Python portable (paquet nuget PSF extrait dans `.python\`) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements.txt` → `.env` → `scripts/check_install.py`.
+- `-Background` : les services sont lancés sans fenêtre via `scripts/run_logged.py` (logs dans `logs\backend.log` / `logs\frontend.log`).
+
+### Linux / macOS (`start.sh`)
+
+```
+start.sh  ──► .venv/bin/python scripts/run_logged.py logs/backend.log  -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   (cwd backend/)
+          ──► attend GET /health
+          ──► .venv/bin/python scripts/run_logged.py logs/frontend.log -m streamlit run app.py --server.port 8501                      (cwd frontend/)
+          ──► attend GET /_stcore/health, ouvre le navigateur (xdg-open / open), écrit logs/pids.env
+stop.sh   ──► SIGTERM sur les groupes de processus enregistrés + libère 8000/8501 s'ils sont tenus par un python du .venv (SIGKILL après 3 s)
+```
+
+- `setup.sh` : détection Python 3.10-3.12 64 bits (`python3.11` > `python3.12` > `python3.10`, pyenv, Homebrew, uv, conda) → `python -m venv .venv` → `pip install --only-binary :all: -r requirements.txt` → `.env` → `scripts/check_install.py`. Options `--python`, `--dev`, `--force`.
+- `run_logged.py` se détache dans sa propre session (`os.setsid`) : les services survivent à la fermeture du terminal ; `./start.sh --foreground` garde la main et arrête tout sur Ctrl+C.
+
+### Commun aux deux plateformes
+
 - Variables positionnées au lancement : `BACKEND_URL`, `PYTHONUTF8=1`, `NO_PROXY=localhost,127.0.0.1`, `STREAMLIT_SERVER_HEADLESS=true`.
 - Les services écoutent sur 127.0.0.1 uniquement (aucune règle pare-feu / élévation).
-- `/health` ne bloque plus sur les APIs publiques : sonde en arrière-plan avec cache (`?sync=true` pour forcer).
-
-## Docker (optionnel)
-
-**Dockerfile.backend**:
-- python:3.11-slim, build-essential, libpq-dev, requirements.txt, app code, generated folder, uvicorn
-
-**Dockerfile.frontend**:
-- python:3.11-slim, requirements.txt, app code, streamlit
-
-**docker-compose.yml**:
-- postgres:15-alpine, healthcheck, volume postgres_data
-- backend: build Dockerfile.backend, port 8000, env_file .env, volumes backend, knowledge_base, generated, depends_on postgres healthy, DATABASE_URL
-- frontend: build Dockerfile.frontend, port 8501, env_file .env, volumes frontend, depends_on backend, BACKEND_URL=http://backend:8000
-- volumes: postgres_data, backend_generated
+- `/health` ne bloque pas sur les APIs publiques : sonde en arrière-plan avec cache (`?sync=true` pour forcer).
+- Relancer `start` alors que les services tournent ne provoque pas d'erreur : les services sains sont réutilisés.
 
 ## VS Code
 
@@ -440,7 +449,7 @@ stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/
 - Backend FastAPI (uvicorn), Frontend Streamlit, Compound, Pytest All, Test Data Quality, Test Market Analysis
 
 **.vscode/tasks.json**:
-- Windows: Setup/Start/Stop/Tests (scripts PowerShell), Run Backend/Frontend/Tests (venv), Lint Backend, Docker Compose Up (optionnel)
+- Setup/Start/Stop/Tests (scripts PowerShell sous Windows), Run Backend/Frontend/Tests (venv), Lint Backend. Sous Linux/macOS, utiliser les scripts `.sh` dans le terminal intégré.
 
 **.vscode/extensions.json**:
 - Python, Pylance, Black, Flake8, PowerShell, YAML, Prettier, Jupyter, Copilot
@@ -530,14 +539,11 @@ stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/
 - Interactif, beau, Streamlit compatible
 - vs Matplotlib: plus moderne
 
-**Scripts PowerShell natifs (Windows)**:
-- Docker Desktop souvent interdit sur les postes d'entreprise (et exige des droits admin / WSL2)
+**Scripts natifs plutôt que Docker**:
+- Docker Desktop est souvent interdit sur les postes d'entreprise (et exige des droits admin / WSL2) : le projet n'en dépend plus du tout
 - Tout tient dans un `.venv` : aucune installation système, aucune élévation, désinstallation = suppression du dossier
-- `--only-binary :all:` garantit l'absence de compilation (pas de Visual C++ Build Tools) ; Python 3.10-3.12 x64 requis pour disposer des wheels
-
-**Docker Compose (optionnel)**:
-- 1 commande pour tout lancer, reproducibilité
-- Postgres présent dans le compose mais non utilisé par le code (persistance fichiers)
+- `--only-binary :all:` garantit l'absence de compilation (pas de Visual C++ Build Tools / gcc) ; Python 3.10-3.12 64 bits requis pour disposer des wheels
+- Mêmes étapes et même `requirements.txt` sur Windows (`.ps1`) et Linux/macOS (`.sh`) ; la reproductibilité est assurée par les versions épinglées et la CI multi-OS
 
 **VS Code config**:
 - Pour dev local facile, debugging, tests, tasks
@@ -545,7 +551,7 @@ stop.ps1  ──► termine les arbres de processus enregistrés + libère 8000/
 ## Scalabilité
 
 - **Horizontal**: Backend stateless, peut scaler via k8s, plusieurs replicas
-- **DB**: Postgres pour prod, peut passer à TimescaleDB pour time series
+- **DB**: aucune aujourd'hui (fichiers) ; une base (Postgres/TimescaleDB) pourrait être ajoutée plus tard pour les séries temporelles, sans Docker obligatoire
 - **Cache**: Ajouter Redis pour market data cache (actuellement pas de cache, mais prévu)
 - **Queue**: Pour génération présentation longue, ajouter Celery
 - **Vector DB**: Pour Knowledge Base RAG avancé, ajouter Qdrant/Chroma (actuellement keyword search simple pour rester léger)

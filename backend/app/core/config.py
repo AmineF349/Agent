@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     AZURE_OPENAI_DEPLOYMENT: str = "gpt-4o-mini"
     AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
 
-    DATABASE_URL: Optional[str] = None
     SECRET_KEY: str = "change-me-in-production-power-market-intelligence-2024"
     CORS_ORIGINS: str = "http://localhost:8501,http://localhost:3000"
 

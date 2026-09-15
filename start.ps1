@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Lance le Power Market Intelligence Agent (backend FastAPI + frontend Streamlit)
-    sous Windows, sans Docker ni droits administrateur.
+    sous Windows, sans droits administrateur.
 
 .DESCRIPTION
     - Demarre le backend (uvicorn) et le frontend (streamlit) dans deux fenetres
@@ -57,7 +57,7 @@ if (-not $Root) { $Root = (Get-Location).Path }
 Set-Location $Root
 . (Join-Path $Root "scripts\windows\common.ps1")
 
-Write-Banner "Power Market Intelligence Agent - Demarrage (Windows, sans Docker)"
+Write-Banner "Power Market Intelligence Agent - Demarrage (Windows)"
 
 # --- Environnement virtuel --------------------------------------------------
 $VenvPython = Get-VenvPython $Root
@@ -128,7 +128,7 @@ $env:NO_PROXY = if ($env:NO_PROXY) { "$($env:NO_PROXY),$noProxy" } else { $noPro
 $env:no_proxy = $env:NO_PROXY
 
 $qPython = ConvertTo-PSQuoted $VenvPython
-$RunLogged = Join-Path $Root "scripts\windows\run_logged.py"
+$RunLogged = Join-Path $Root "scripts\run_logged.py"
 
 # Arguments Python de chaque service (tableaux : aucun probleme de quoting)
 $backendArgs = @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$BackendPort")

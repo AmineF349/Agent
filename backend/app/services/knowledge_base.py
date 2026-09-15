@@ -28,15 +28,11 @@ class KnowledgeBaseService:
         # Un chemin explicite ou la variable KNOWLEDGE_BASE_DIR reste prioritaire.
         self.kb_path = Path(kb_path) if kb_path else KNOWLEDGE_BASE_DIR
         if not self.kb_path.exists():
-            # Emplacements de secours (Docker, lancement depuis la racine...)
-            possible_paths = [
-                Path("knowledge_base"),
-                Path("../knowledge_base"),
-                Path("/app/knowledge_base"),
-            ]
-            for p in possible_paths:
-                if p.exists():
-                    self.kb_path = p
+            # Emplacements de secours relatifs au répertoire courant (anciennes habitudes
+            # de lancement) ; le chemin absolu ci-dessus est le cas nominal.
+            for candidate in (Path("knowledge_base"), Path("../knowledge_base")):
+                if candidate.exists():
+                    self.kb_path = candidate.resolve()
                     break
 
         self.documents: List[Dict[str, Any]] = []

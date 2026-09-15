@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installation du Power Market Intelligence Agent sous Windows - sans Docker,
+    Installation du Power Market Intelligence Agent sous Windows - 100% natif,
     sans droits administrateur.
 
 .DESCRIPTION
@@ -9,7 +9,7 @@
        installation "pour moi uniquement" (sans admin) ou un Python portable
        dans .\.python\ (rien d'installe sur le systeme).
     2. Cree un environnement virtuel .venv a la racine du projet.
-    3. Installe les dependances backend + frontend depuis requirements-windows.txt
+    3. Installe les dependances backend + frontend depuis requirements.txt
        (wheels precompilees uniquement : aucune compilation, aucun Visual C++).
     4. Cree le fichier .env (copie de .env.example) et les dossiers de travail.
     5. Verifie que l'application s'importe correctement.
@@ -58,11 +58,11 @@ if (-not $Root) { $Root = (Get-Location).Path }
 Set-Location $Root
 . (Join-Path $Root "scripts\windows\common.ps1")
 
-Write-Banner "Power Market Intelligence Agent - Installation Windows (sans Docker)"
+Write-Banner "Power Market Intelligence Agent - Installation Windows"
 
 # --- Verifications preliminaires -------------------------------------------
-if (-not (Test-Path (Join-Path $Root "backend\requirements.txt"))) {
-    Write-Fail "backend\requirements.txt introuvable. Lancez ce script depuis la racine du depot."
+if (-not (Test-Path (Join-Path $Root "requirements.txt")) -or -not (Test-Path (Join-Path $Root "backend\app\main.py"))) {
+    Write-Fail "requirements.txt / backend\app\main.py introuvables. Lancez ce script depuis la racine du depot."
     exit 1
 }
 if (Test-IsAdmin) {
@@ -170,11 +170,11 @@ if ($r.ExitCode -ne 0) {
 $pipArgs = @(
     "-m", "pip", "install",
     "--only-binary", ":all:",     # jamais de compilation locale (pas de Visual C++ requis)
-    "-r", (Join-Path $Root "requirements-windows.txt")
+    "-r", (Join-Path $Root "requirements.txt")
 )
 if ($Dev) { $pipArgs += @("-r", (Join-Path $Root "requirements-dev.txt")) }
 
-Write-Info "pip install --only-binary :all: -r requirements-windows.txt$(if ($Dev) { ' -r requirements-dev.txt' })"
+Write-Info "pip install --only-binary :all: -r requirements.txt$(if ($Dev) { ' -r requirements-dev.txt' })"
 Write-Info "(premiere installation : ~400 Mo a telecharger, 2 a 5 minutes)"
 $r = Invoke-Native -Exe $VenvPython -Arguments $pipArgs
 if ($r.ExitCode -ne 0) {
@@ -205,7 +205,7 @@ Write-Ok "Dossiers backend\generated et logs prets"
 # --- 5. Verification --------------------------------------------------------
 Write-Step "5/5" "Verification de l'installation"
 
-$checkScript = Join-Path $Root "scripts\windows\check_install.py"
+$checkScript = Join-Path $Root "scripts\check_install.py"
 $r = Invoke-Native -Exe $VenvPython -Arguments @($checkScript) -Quiet
 if ($r.ExitCode -ne 0) {
     Write-Fail "Verification echouee :"

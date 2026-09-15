@@ -1,9 +1,9 @@
-# Installation Windows sans Docker (poste d'entreprise, sans droits admin)
+# Installation Windows (poste d'entreprise, sans droits admin)
 
 Ce guide décrit l'installation et le lancement **100 % natifs** du Power Market
 Intelligence Agent sous Windows 10/11 :
 
-- **sans Docker Desktop** (bloqué par la DSI),
+- **sans Docker** (le projet n'en a pas besoin, sur aucune plateforme),
 - **sans droits administrateur**,
 - **sans compilation** (aucun Visual Studio Build Tools),
 - **sans base de données ni service externe** (pas de PostgreSQL, pas de Redis).
@@ -84,14 +84,12 @@ Ce que fait le script :
    sont ignorés.
 2. **Crée `.venv\`** à la racine du projet (un seul environnement pour le backend
    et le frontend).
-3. **Installe `requirements-windows.txt`** avec `pip install --only-binary :all:` :
+3. **Installe `requirements.txt`** avec `pip install --only-binary :all:` :
    uniquement des wheels précompilées → aucune compilation, aucun compilateur C++.
-   Les différences avec `backend/requirements.txt` (utilisé par Docker) sont
-   documentées en tête du fichier (python-pptx 0.6.23, suppression de
-   psycopg2/sqlalchemy/alembic qui ne sont pas utilisés par le code).
+   C'est le même fichier pour toutes les plateformes (Windows, Linux, macOS).
 4. **Crée `.env`** (copie de `.env.example`) et les dossiers `backend\generated\`,
    `logs\`.
-5. **Vérifie** l'installation (`scripts\windows\check_install.py`) : import du
+5. **Vérifie** l'installation (`scripts\check_install.py`) : import du
    backend, du frontend, chemins de la knowledge base et des fichiers générés.
 
 Le script est **idempotent** : relancez-le après un `git pull` pour mettre à
@@ -311,7 +309,7 @@ compound) utilise l'interpréteur sélectionné.
 
 ```powershell
 git pull
-.\setup.ps1      # met à jour les dépendances si requirements-windows.txt a changé
+.\setup.ps1      # met à jour les dépendances si requirements.txt a changé
 .\start.ps1
 ```
 

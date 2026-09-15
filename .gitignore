@@ -45,14 +45,6 @@ logs/
 .python/
 .python-extract/
 
-# DB
-*.db
-*.sqlite
-*.sqlite3
-
-# Docker
-postgres_data/
-
 # Testing
 .pytest_cache/
 .coverage

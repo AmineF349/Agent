@@ -6,8 +6,9 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red.svg)](https://streamlit.io/)
 [![CI](https://github.com/AmineF349/Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/AmineF349/Agent/actions/workflows/ci.yml)
-[![Windows](https://img.shields.io/badge/Windows-natif%20sans%20Docker-0078D6.svg)](docs/WINDOWS_SETUP.md)
-[![Docker](https://img.shields.io/badge/Docker-optionnel-lightgrey.svg)](https://www.docker.com/)
+[![Windows](https://img.shields.io/badge/Windows-natif%2C%20sans%20admin-0078D6.svg)](docs/WINDOWS_SETUP.md)
+[![Linux%20%7C%20macOS](https://img.shields.io/badge/Linux%20%7C%20macOS-setup.sh-333.svg)](docs/INSTALLATION.md)
+[![No Docker](https://img.shields.io/badge/Docker-non%20requis-success.svg)](docs/INSTALLATION.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
@@ -36,7 +37,10 @@ Aider à:
 
 ## 🚀 Quick Start
 
-### 🪟 Windows – sans Docker, sans droits admin (recommandé sur poste d'entreprise)
+**100 % natif** : deux processus Python sur votre poste, un seul environnement virtuel, aucune base de données,
+aucun Docker, aucun droit administrateur, aucune compilation.
+
+### 🪟 Windows (recommandé sur poste d'entreprise)
 
 ```powershell
 git clone https://github.com/AmineF349/Agent.git
@@ -46,20 +50,21 @@ cd Agent
 .\stop.ps1       # arrête tout
 ```
 
-- Aucun Docker, aucune base de données, aucun droit administrateur, aucune compilation.
 - Si PowerShell bloque les scripts : `powershell -ExecutionPolicy Bypass -File .\setup.ps1` ou double-clic sur `setup.cmd` / `start.cmd`.
 - Pas de Python sur le poste ? `setup.ps1` propose de l'installer **sans admin** (installeur « pour moi uniquement » ou Python portable dans `.\.python\`).
 - Guide complet + dépannage proxy / politique d'exécution : **[docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**.
-- Validé en continu par la CI sur runners Windows (Windows PowerShell 5.1 et PowerShell 7, Python 3.10 / 3.11 / 3.12, mode Python portable).
 
-### 🐳 Docker (Linux / macOS / Windows non restreint)
+### 🐧 Linux / 🍎 macOS
 
 ```bash
 git clone https://github.com/AmineF349/Agent.git
 cd Agent
-cp .env.example .env   # Optionnel, fonctionne sans clé
-docker-compose up --build
+./setup.sh       # Python 3.10-3.12 détecté, .venv, dépendances, .env
+./start.sh       # backend + frontend en arrière-plan (logs dans ./logs/), ouvre le navigateur
+./stop.sh
 ```
+
+Validé en continu par la CI : Ubuntu, macOS et Windows (PowerShell 5.1 et 7), Python 3.10 / 3.11 / 3.12.
 
 **Accès:**
 - Frontend: http://localhost:8501
@@ -155,17 +160,16 @@ Frontend (Streamlit) ──HTTP──> Backend (FastAPI)
                                                  ENTSO-E (optional)
                                                  Mock (fallback)
                     │
-              ┌─────┼─────┐
-              ▼     ▼     ▼
-           Postgres SQLite Files
+                    ▼
+          Fichiers (backend/generated, knowledge_base)
 ```
 
 **Stack**:
-- Backend: Python 3.11, FastAPI, Pandas/Polars, Plotly, LangChain/LangGraph, python-pptx/docx, reportlab
+- Backend: Python 3.10-3.12, FastAPI, Pandas/Polars, Plotly, LangChain/LangGraph, python-pptx/docx, reportlab
 - Frontend: Streamlit, Plotly, requests
 - Data: Energy-Charts.info (gratuit, sans clé), Open-Meteo (gratuit, sans clé), ENTSO-E (optionnel, clé gratuite), Mock fallback
 - IA: OpenAI/Claude/Azure OpenAI (optionnel) + Fallback local templates experts (100% fonctionnel sans clé)
-- Infra: scripts PowerShell natifs Windows (`setup.ps1` / `start.ps1`), Docker Compose optionnel, VS Code config. Aucune base de données requise (stockage fichiers)
+- Infra: scripts d'installation/lancement natifs (`setup.ps1` / `start.ps1` Windows, `setup.sh` / `start.sh` Linux-macOS), un seul `.venv`, VS Code config, CI GitHub Actions. Aucune base de données, aucun Docker (stockage fichiers)
 
 Voir `ARCHITECTURE.md` pour détails.
 
@@ -220,22 +224,20 @@ Sinon, tout marche en mode fallback.
 │   │   ├── data/repositories/ (file_repo)
 │   │   ├── models/ (schemas, domain)
 │   │   └── agent/ (llm_provider, langgraph_agent, prompts)
-│   ├── tests/ (5 fichiers, 15+ tests)
-│   ├── data_samples/ (sample_prices.csv, sample_renewable.csv, sample_scenario.json)
-│   └── requirements.txt
+│   ├── tests/ (6 fichiers, 30 tests)
+│   └── data_samples/ (sample_prices.csv, sample_renewable.csv, sample_scenario.json)
 ├── frontend/
 │   ├── app.py (main Streamlit)
 │   ├── pages/ (Dashboard, Data Analysis, Scenario Review, Presentation Builder, Meeting Assistant, Knowledge Center)
 │   ├── components/ (charts, cards, sidebar)
-│   ├── utils/ (api_client)
-│   └── requirements.txt
+│   └── utils/ (api_client, paths)
 ├── knowledge_base/
 │   ├── concepts/ (capture_rate, baseload_peakload, negative_hours, bess, interconnectors)
 │   ├── models/ (afry_bid3, aurora, assumptions)
 │   └── faq.md
 ├── docs/
 │   ├── INSTALLATION.md
-│   ├── WINDOWS_SETUP.md (Windows sans Docker / sans admin)
+│   ├── WINDOWS_SETUP.md (Windows sans droits admin)
 │   ├── VSCODE_GUIDE.md
 │   ├── API_DOCS.md
 │   └── USER_GUIDE.md
@@ -244,12 +246,13 @@ Sinon, tout marche en mode fallback.
 │   ├── launch.json
 │   ├── tasks.json
 │   └── extensions.json
-├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1   (Windows natif, sans Docker)
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1   (Windows)
 ├── setup.cmd / start.cmd / stop.cmd               (double-clic, contourne ExecutionPolicy)
-├── scripts/windows/ (common.ps1, check_install.py)
-├── requirements-windows.txt (backend + frontend, wheels précompilées uniquement)
+├── setup.sh / start.sh / stop.sh / test.sh        (Linux / macOS)
+├── scripts/ (check_install.py, run_logged.py, windows/common.ps1, unix/common.sh)
+├── requirements.txt (backend + frontend, wheels précompilées uniquement)
 ├── requirements-dev.txt
-├── docker-compose.yml, Dockerfile.backend, Dockerfile.frontend (optionnel)
+├── .github/workflows/ci.yml (Ubuntu + macOS + Windows)
 ├── .env.example
 ├── ARCHITECTURE.md
 ├── ROADMAP.md
@@ -260,7 +263,10 @@ Sinon, tout marche en mode fallback.
 
 ## 🛠️ Installation
 
-### Option 1: Windows natif (sans Docker, sans admin) – Recommandé sur poste d'entreprise
+Prérequis : **Python 3.10, 3.11 ou 3.12 (64 bits)** — c'est tout. Pas de Docker, pas de base de données,
+pas de compilateur (toutes les dépendances sont installées en wheels précompilées, `--only-binary :all:`).
+
+### Windows
 
 ```powershell
 .\setup.ps1        # ajoutez -Dev pour pytest/black/flake8
@@ -269,27 +275,31 @@ Sinon, tout marche en mode fallback.
 
 | Script | Rôle |
 |--------|------|
-| `setup.ps1` | Détecte Python 3.10-3.12 (ou l'installe sans admin), crée `.venv`, installe `requirements-windows.txt` (`--only-binary :all:`), crée `.env`, vérifie l'installation |
-| `start.ps1` | Lance backend (uvicorn :8000) + frontend (Streamlit :8501) dans deux fenêtres, attend `/health`, ouvre le navigateur. Options : `-Background`, `-BackendPort`, `-FrontendPort`, `-NoBrowser`, `-BackendOnly`, `-FrontendOnly` |
+| `setup.ps1` | Détecte Python 3.10-3.12 (ou l'installe sans admin), crée `.venv`, installe `requirements.txt`, crée `.env`, vérifie l'installation. Options : `-Dev`, `-Force`, `-Python <exe>`, `-Portable`, `-Offline` |
+| `start.ps1` | Lance backend (uvicorn :8000) + frontend (Streamlit :8501) dans deux fenêtres, attend `/health`, ouvre le navigateur. Options : `-Background`, `-BackendPort`, `-FrontendPort`, `-NoBrowser`, `-BackendOnly`, `-FrontendOnly`, `-NoReload` |
 | `stop.ps1` | Arrête proprement les deux services |
 | `test.ps1` | Lance `pytest` |
 
 Détails, options et dépannage (proxy, ExecutionPolicy, Python absent) : [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md).
 
-### Option 2: Docker
+### Linux / macOS
 
 ```bash
-cp .env.example .env
-docker-compose up --build
-# Frontend http://localhost:8501, Backend http://localhost:8000/docs
+./setup.sh         # --dev, --force, --python /chemin/python3.11
+./start.sh         # --foreground, --backend-port, --frontend-port, --no-browser, --backend-only, --frontend-only
+./stop.sh
+./test.sh
 ```
 
-### Option 3: Local manuel (Linux / macOS / Windows)
+Pas de Python 3.10-3.12 ? Sans droits root : `curl -LsSf https://astral.sh/uv/install.sh | sh && uv python install 3.11`
+puis `./setup.sh --python "$(uv python find 3.11)"`.
+
+### Manuel (toutes plateformes)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows : .\.venv\Scripts\Activate.ps1
-pip install -r requirements-windows.txt   # fonctionne aussi sous Linux/macOS (un seul venv backend+frontend)
+pip install --only-binary :all: -r requirements.txt
 
 # Backend
 cd backend && uvicorn app.main:app --reload --port 8000
@@ -320,13 +330,14 @@ Voir `docs/VSCODE_GUIDE.md` pour guide complet (settings, launch, tasks, extensi
 .\test.ps1            # Windows
 ```
 ```bash
-cd backend && pytest tests/ -v    # Linux / macOS
+./test.sh             # Linux / macOS  (ou : cd backend && pytest tests/ -v)
 # 30 tests: data_quality, market_analysis, scenario, meeting, presentation, api (intégration HTTP)
 ```
 
-CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Linux), puis exécution réelle de
-`setup.ps1` / `test.ps1` / `start.ps1` / `stop.ps1` sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus)
-avec vérification HTTP du backend et du frontend et génération/téléchargement d'un PPTX de bout en bout.
+CI (`.github/workflows/ci.yml`) : pytest + flake8 sur Python 3.10/3.11/3.12 (Ubuntu), puis exécution réelle des scripts
+d'installation et de lancement : `setup.sh` / `start.sh` / `stop.sh` sur Ubuntu et macOS, `setup.ps1` / `start.ps1` / `stop.ps1`
+sur `windows-latest` (PS 5.1 + PS 7, Python portable inclus), avec vérification HTTP du backend et du frontend et
+génération/téléchargement d'un PPTX de bout en bout.
 
 Via VS Code: Onglet Testing -> ▶️
 
@@ -337,8 +348,8 @@ Via VS Code: Onglet Testing -> ▶️
 - `README.md` (ce fichier) - Overview
 - `ARCHITECTURE.md` - Architecture détaillée + diagramme + choix techniques
 - `ROADMAP.md` - Roadmap v1.1, v1.2, v2.0...
-- `docs/INSTALLATION.md` - Installation Docker/local + troubleshooting
-- `docs/WINDOWS_SETUP.md` - Windows sans Docker ni droits admin (setup.ps1 / start.ps1), dépannage proxy
+- `docs/INSTALLATION.md` - Installation Linux / macOS / manuelle + troubleshooting
+- `docs/WINDOWS_SETUP.md` - Windows sans droits admin (setup.ps1 / start.ps1), dépannage proxy
 - `docs/VSCODE_GUIDE.md` - Guide VS Code dev
 - `docs/API_DOCS.md` - API endpoints + exemples curl
 - `docs/USER_GUIDE.md` - Guide utilisateur analyste sans dev

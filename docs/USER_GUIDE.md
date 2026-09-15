@@ -4,7 +4,9 @@
 
 ### Lancement
 
-**Windows (poste d'entreprise, sans Docker ni droits admin) :**
+Aucun Docker, aucune base de données, aucun droit administrateur : tout tourne dans un `.venv` local.
+
+**Windows (poste d'entreprise, sans droits admin) :**
 ```powershell
 .\setup.ps1     # une seule fois
 .\start.ps1     # ouvre http://localhost:8501
@@ -12,11 +14,12 @@
 Arrêt : `.\stop.ps1`. Si PowerShell bloque les scripts, double-cliquez sur `setup.cmd` puis `start.cmd`.
 Détails : `docs/WINDOWS_SETUP.md`.
 
-**Docker (1 commande):**
+**Linux / macOS :**
 ```bash
-docker-compose up --build
+./setup.sh      # une seule fois
+./start.sh      # ouvre http://localhost:8501 (services en arrière-plan, logs dans logs/)
 ```
-Ouvrir http://localhost:8501
+Arrêt : `./stop.sh`. Détails : `docs/INSTALLATION.md`.
 
 **Ou local manuel :**
 - Backend: `cd backend && uvicorn app.main:app --reload --port 8000`

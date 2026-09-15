@@ -73,7 +73,7 @@ with st.sidebar:
         st.error(f"❌ Backend KO: {health.get('error')}")
         st.markdown(
             f"Backend URL: `{client.base_url}`  \n"
-            "Windows (sans Docker) : lancez `.\\start.ps1` à la racine du projet  \n"
+            "Windows : lancez `.\\start.ps1` à la racine du projet — Linux/macOS : `./start.sh`  \n"
             "Manuel : `cd backend` puis `uvicorn app.main:app --port 8000`"
         )
 
@@ -239,7 +239,7 @@ with tab3:
 st.divider()
 st.markdown("### 📚 Architecture Produit")
 st.markdown("""
-**Stack**: FastAPI + Streamlit + LangGraph + Pandas/Polars + Plotly + Docker
+**Stack**: FastAPI + Streamlit + LangGraph + Pandas/Polars + Plotly — 100 % local, sans base de données ni Docker
 
 **APIs Publiques Gratuites (sans clé)**:
 - Energy-Charts.info (Fraunhofer ISE) - prix day-ahead EU

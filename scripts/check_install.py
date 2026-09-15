@@ -1,7 +1,7 @@
 """
-Verification post-installation (appele par setup.ps1, utilisable seul) :
+Verification post-installation (appele par setup.ps1 / setup.sh, utilisable seul) :
 
-    .venv\Scripts\python.exe scripts\windows\check_install.py
+    .venv\Scripts\python.exe scripts\check_install.py
 
 - verifie la version de Python,
 - verifie que les dependances critiques s'importent,
@@ -26,7 +26,7 @@ _stderr_capture = io.StringIO()
 _real_stderr = sys.stderr
 sys.stderr = _stderr_capture
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]  # scripts/check_install.py -> racine du depot
 BACKEND_DIR = REPO_ROOT / "backend"
 FRONTEND_DIR = REPO_ROOT / "frontend"
 

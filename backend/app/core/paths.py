@@ -2,8 +2,8 @@
 Chemins du projet - résolus de façon absolue (indépendants du répertoire courant).
 
 Objectif : le backend doit fonctionner identiquement qu'il soit lancé depuis
-`backend/`, depuis la racine du dépôt, depuis VS Code, depuis un script Windows
-(`start.ps1`) ou dans un conteneur Docker.
+`backend/`, depuis la racine du dépôt, depuis VS Code ou depuis les scripts de
+lancement (`start.ps1` sous Windows, `start.sh` sous Linux/macOS).
 
 Chaque chemin peut être surchargé par une variable d'environnement.
 """

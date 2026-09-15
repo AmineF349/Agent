@@ -1,22 +1,25 @@
 # =============================================================================
-# Power Market Intelligence Agent - Dependances Windows natif (sans Docker)
+# Power Market Intelligence Agent - Dependances (backend + frontend)
 # =============================================================================
-# Un seul environnement virtuel (.venv) pour backend + frontend.
-# Toutes les versions ci-dessous disposent de wheels precompilees win_amd64
-# pour Python 3.10, 3.11 et 3.12 : aucune compilation, aucun Visual C++ requis.
-# Installe par setup.ps1 avec `pip install --only-binary :all:`.
+# Un seul environnement virtuel (.venv) pour le backend FastAPI et le frontend
+# Streamlit. Installe par setup.ps1 (Windows) / setup.sh (Linux, macOS) avec
+# `pip install --only-binary :all:` : uniquement des wheels precompilees,
+# aucune compilation, aucun compilateur C/C++ requis.
 #
-# Python 3.13+ n'est PAS supporte (numpy 1.26 / pandas 2.2.1 n'ont pas de wheel).
+# Python supporte : 3.10, 3.11, 3.12 (64 bits). Python 3.13+ n'est PAS supporte
+# (numpy 1.26 / pandas 2.2.1 / pydantic-core n'ont pas de wheel).
 #
-# Differences volontaires par rapport a backend/requirements.txt :
-#   - python-pptx 0.6.23 (au lieu de 0.6.21) : 0.6.21 n'a pas de wheel et
-#     plante sur Windows/Python 3.10+ (AttributeError collections.abc, fix #762).
-#   - psycopg2-binary / sqlalchemy / alembic retires : PostgreSQL n'est pas
-#     utilise par le code (aucun import), c'etait un artefact de docker-compose.
-#   - uvicorn[standard] : identique, uvloop est automatiquement exclu sous
-#     Windows (marqueur d'environnement) ; le rechargement utilise watchfiles.
-#   - pydantic 2.7.4 (aligne dans backend/requirements.txt) : 2.6.x plante sur
-#     Python >= 3.12.4 (TypeError ForwardRef._evaluate ... recursive_guard).
+# Aucune base de donnees ni service externe : persistance sur fichiers
+# (backend/generated, knowledge_base). Les APIs publiques (Energy-Charts,
+# Open-Meteo) et les LLM sont optionnels (fallback local).
+#
+# Notes de versions :
+#   - python-pptx 0.6.23 : 0.6.21 n'a pas de wheel et plante sur Python 3.10+
+#     (AttributeError collections.abc, fix #762).
+#   - pydantic 2.7.4 : 2.6.x plante sur Python >= 3.12.4
+#     (TypeError ForwardRef._evaluate ... recursive_guard).
+#   - uvicorn[standard] : uvloop est automatiquement exclu sous Windows
+#     (marqueur d'environnement) ; le rechargement utilise watchfiles.
 # =============================================================================
 
 # --- Backend : API ---

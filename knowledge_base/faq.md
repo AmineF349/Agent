@@ -3,10 +3,10 @@
 ## Général
 
 **Q: Qu'est-ce que Power Market Intelligence Agent?**
-R: Copilote IA pour analystes marchés électriques européens. 6 modules: Data Quality, Market Analysis, Scenario Challenger, Meeting Copilot, Presentation Generator, Knowledge Base. Déployable localement via Docker, fonctionne sans clé API (fallback local) ou avec OpenAI/Claude/Azure.
+R: Copilote IA pour analystes marchés électriques européens. 6 modules: Data Quality, Market Analysis, Scenario Challenger, Meeting Copilot, Presentation Generator, Knowledge Base. S'installe et tourne 100 % en local (Windows sans droits admin via setup.ps1 / start.ps1, Linux/macOS via setup.sh / start.sh), sans base de données ni Docker ; fonctionne sans clé API (fallback local) ou avec OpenAI/Claude/Azure.
 
 **Q: Quelle est la stack technique?**
-R: Backend Python FastAPI, Frontend Streamlit, Agent LangGraph/CrewAI, Data Pandas/Polars, Visu Plotly, DB Postgres/SQLite, Docker.
+R: Backend Python FastAPI, Frontend Streamlit, Agent LangGraph, Data Pandas/Polars, Visu Plotly. Persistance sur fichiers (aucune base de données), un seul environnement virtuel Python.
 
 **Q: Besoin de clé API?**
 R: Non, 100% fonctionnel sans clé grâce à APIs publiques gratuites (Energy-Charts.info, Open-Meteo) et fallback local. Optionnel: ENTSO-E clé gratuite, OpenAI/Claude/Azure pour LLM plus riche.
@@ -108,7 +108,7 @@ R: gpt-4o-mini ~0.15$/1M tokens input, 0.6$/1M output. Pour usage analyste (100 
 ## Déploiement
 
 **Q: Comment lancer localement?**
-R: Voir docs/INSTALLATION.md et docs/VSCODE_GUIDE.md. Docker Compose: docker-compose up --build. Ou local: pip install -r backend/requirements.txt + uvicorn + streamlit.
+R: Windows : `.\setup.ps1` puis `.\start.ps1` (voir docs/WINDOWS_SETUP.md). Linux/macOS : `./setup.sh` puis `./start.sh`. Détails : docs/INSTALLATION.md et docs/VSCODE_GUIDE.md.
 
 **Q: Besoin de GPU?**
 R: Non, tout CPU. LLM via API, pas local.

@@ -1,8 +1,8 @@
 """
 Lance une commande Python en redirigeant stdout + stderr (fusionnes) vers un
-fichier de log. Utilise par `start.ps1 -Background`.
+fichier de log. Utilise par `start.ps1 -Background` et `start.sh`.
 
-    python scripts\\windows\\run_logged.py <fichier.log> -m uvicorn app.main:app ...
+    python scripts/run_logged.py <fichier.log> -m uvicorn app.main:app ...
 
 Pourquoi ce wrapper plutot qu'une redirection PowerShell ?
 - uvicorn / streamlit ecrivent leurs logs sur stderr ;
@@ -27,6 +27,14 @@ def main() -> int:
     log_path = os.path.abspath(sys.argv[1])
     cmd = [sys.executable] + sys.argv[2:]
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    if hasattr(os, "setsid"):
+        # Linux / macOS : nouvelle session -> pas de SIGHUP a la fermeture du
+        # terminal, et stop.sh peut arreter tout le groupe (wrapper + service).
+        try:
+            os.setsid()
+        except OSError:
+            pass  # deja chef de groupe (lancement manuel) : sans importance
 
     env = dict(os.environ)
     env.setdefault("PYTHONUNBUFFERED", "1")

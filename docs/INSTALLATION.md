@@ -1,15 +1,20 @@
 # Installation - Power Market Intelligence Agent
 
+Le projet s'installe et se lance **100 % nativement** : deux processus Python (FastAPI + Streamlit)
+dans un seul environnement virtuel `.venv`. **Pas de Docker, pas de base de données, pas de droits
+administrateur, pas de compilation.**
+
 ## Prérequis
 
-- Python 3.10, 3.11 ou 3.12 – 64 bits (recommandé 3.11). Python 3.13+ non supporté.
-- Docker + Docker Compose (**optionnel** – inutile sous Windows, voir Option 0)
-- VS Code (recommandé)
-- 4GB RAM minimum, 8GB recommandé
-- Aucune base de données ni service externe : le projet n'utilise ni PostgreSQL, ni Redis
-  (le service `postgres` de `docker-compose.yml` est optionnel et n'est pas utilisé par le code).
+- Python 3.10, 3.11 ou 3.12 – 64 bits (recommandé 3.11). Python 3.13+ non supporté (pas de wheels
+  précompilées pour numpy/pandas/pydantic aux versions épinglées).
+- Git.
+- 4 Go de RAM minimum, 8 Go recommandé ; ~1 Go d'espace disque pour le `.venv`.
+- Accès à https://pypi.org (directement ou via le proxy d'entreprise) lors de l'installation.
+- Aucune base de données ni service externe : le projet n'utilise ni PostgreSQL, ni Redis, ni Docker.
+- VS Code (recommandé, voir [VSCODE_GUIDE.md](VSCODE_GUIDE.md)).
 
-## Option 0: Windows natif – sans Docker, sans droits admin (Recommandé sur poste d'entreprise)
+## Option 1 : Windows – sans droits admin (recommandé sur poste d'entreprise)
 
 ```powershell
 git clone https://github.com/AmineF349/Agent.git
@@ -25,41 +30,58 @@ ou double-clic sur `setup.cmd` / `start.cmd`.
 
 Guide complet (options, proxy d'entreprise, Python absent, dépannage) : [WINDOWS_SETUP.md](WINDOWS_SETUP.md).
 
-## Option 1: Docker Compose (Linux / macOS / Windows non restreint)
+## Option 2 : Linux / macOS – scripts `.sh`
 
 ```bash
-# Cloner repo
-git clone <repo_url>
+git clone https://github.com/AmineF349/Agent.git
 cd Agent
-
-# Copier env
-cp .env.example .env
-# Editer .env si besoin (optionnel - fonctionne sans clé)
-
-# Lancer
-docker-compose up --build
-
-# Accès:
-# Backend API: http://localhost:8000/docs
-# Frontend: http://localhost:8501
-# Postgres: localhost:5432 (power_user/power_pass)
+./setup.sh      # détecte Python 3.10-3.12, crée .venv, installe les dépendances, crée .env
+./start.sh      # backend :8000 + frontend :8501 en arrière-plan, ouvre le navigateur
+./stop.sh       # arrêt
+./test.sh       # pytest
 ```
 
-C'est tout! Tout est fonctionnel.
+| Script | Rôle et options |
+|--------|-----------------|
+| `setup.sh` | `--python /chemin/python3.11` (interpréteur explicite), `--dev` (pytest/black/flake8), `--force` (recrée le `.venv`) |
+| `start.sh` | Lance les deux services en arrière-plan (logs dans `logs/backend.log` et `logs/frontend.log`, PIDs dans `logs/pids.env`). Options : `--foreground` (Ctrl+C arrête tout), `--backend-port N`, `--frontend-port N`, `--no-browser`, `--backend-only`, `--frontend-only`, `--no-reload` |
+| `stop.sh` | Arrête les processus lancés par `start.sh` et libère les ports du projet (uniquement s'ils sont tenus par un python du `.venv`) |
+| `test.sh` | `pytest tests/ -v` depuis `backend/` ; arguments transmis à pytest (`./test.sh -k baseload -x`) |
 
-## Option 2: Local sans Docker, manuel (Dev – Linux / macOS / Windows)
+Les services sont détachés du terminal (`setsid`) : vous pouvez fermer la fenêtre, ils continuent
+de tourner jusqu'à `./stop.sh`. Relancer `./start.sh` alors qu'ils tournent ne provoque pas d'erreur
+(les services sains sont réutilisés).
 
-Un seul environnement virtuel à la racine pour le backend et le frontend
-(`requirements-windows.txt` regroupe les deux et ne contient que des wheels précompilées ;
-il fonctionne aussi sous Linux/macOS).
+### Pas de Python 3.10-3.12 sur la machine ?
+
+Sans droits root, le plus simple est [uv](https://docs.astral.sh/uv/) ou pyenv :
+
+```bash
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.11
+./setup.sh --python "$(uv python find 3.11)"
+
+# pyenv
+pyenv install 3.11 && ./setup.sh --python "$(pyenv prefix 3.11)/bin/python3"
+```
+
+Avec des droits : `brew install python@3.11` (macOS) ou `sudo apt install python3.11 python3.11-venv`
+(Debian/Ubuntu – le module `venv` est packagé séparément).
+
+## Option 3 : Manuel (toutes plateformes)
+
+Un seul environnement virtuel à la racine pour le backend et le frontend (`requirements.txt`
+regroupe les deux et ne contient que des wheels précompilées).
 
 ```bash
 git clone https://github.com/AmineF349/Agent.git
 cd Agent
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell : .\.venv\Scripts\Activate.ps1
-pip install -r requirements-windows.txt
+pip install --only-binary :all: -r requirements.txt
 cp .env.example .env               # Windows : Copy-Item .env.example .env
+python scripts/check_install.py    # vérification (imports backend/frontend, chemins, .env)
 ```
 
 ### Backend
@@ -87,8 +109,6 @@ BACKEND_URL=http://localhost:8000 streamlit run app.py --server.port 8501 --serv
 # Ouvrir http://localhost:8501
 ```
 
-> Les `requirements.txt` séparés de `backend/` et `frontend/` restent utilisés par les Dockerfiles.
-
 ### Variables d'environnement
 
 Voir `.env.example`:
@@ -98,24 +118,22 @@ Voir `.env.example`:
   - `OPENAI_API_KEY=sk-...` (https://platform.openai.com/api-keys)
   - Ou `ANTHROPIC_API_KEY=sk-ant-...` (https://console.anthropic.com/settings/keys)
   - Ou Azure OpenAI
-
 - **ENTSO-E** (optionnel, gratuit):
   - Créer compte https://transparency.entsoe.eu/
   - Générer token
   - `ENTSOE_API_KEY=...`
-
-## Option 3: VS Code Dev Container (Avancé)
-
-1. Installer extension "Dev Containers"
-2. Ouvrir repo dans VS Code
-3. `F1` -> "Dev Containers: Reopen in Container"
-4. Tout est installé automatiquement
+- **Ports / URL** : `BACKEND_PORT`, `FRONTEND_PORT` (lus par les scripts de lancement), `BACKEND_URL`
+  (positionnée automatiquement par `start.ps1` / `start.sh` pour le frontend)
+- **Chemins** (optionnel) : `GENERATED_DIR`, `KNOWLEDGE_BASE_DIR`, `DATA_SAMPLES_DIR`, `PMIA_ENV_FILE`
 
 ## APIs Publiques Gratuites Utilisées
 
 - **Energy-Charts.info**: https://api.energy-charts.info - Prix day-ahead EU, sans clé, 100% gratuit (Fraunhofer ISE)
 - **Open-Meteo**: https://open-meteo.com/ - Météo, vent, solaire, sans clé, 100% gratuit
 - **ENTSO-E**: https://transparency.entsoe.eu/ - Optionnel, clé gratuite après inscription
+
+Si ces APIs sont inaccessibles (proxy, hors-ligne), le backend bascule automatiquement sur des données
+mock : l'application reste 100 % fonctionnelle.
 
 ## Vérification Installation
 
@@ -124,30 +142,39 @@ Voir `.env.example`:
 curl http://localhost:8000/health
 
 # Doit retourner:
-# {"status":"ok","version":"1.0.0","llm_available":false,"public_apis":{"energy_charts":true,"open_meteo":true}}
+# {"status":"ok","version":"1.0.0","llm_available":false,"public_apis":{"energy_charts":true,"open_meteo":true},...}
 
 # Frontend
-curl http://localhost:8501
+curl http://localhost:8501/_stcore/health     # -> ok
 
-# Tests
-cd backend
-pytest tests/ -v
-
-# Doit passer 30 tests (Windows : .\test.ps1)
+# Tests (30 tests)
+./test.sh          # Linux / macOS
+.\test.ps1         # Windows
 ```
 
 ## Troubleshooting
 
 **Windows (proxy, ExecutionPolicy, Python absent, ports occupés) :** voir [WINDOWS_SETUP.md – Dépannage](WINDOWS_SETUP.md#6-dépannage).
 
+**`setup.sh` : « Aucun Python 3.10 - 3.12 (64 bits) trouvé »**
+- Installez Python 3.11 via uv / pyenv / brew (voir plus haut) puis `./setup.sh --python <chemin>`.
+- Python 3.13+ n'est pas utilisable : les wheels des versions épinglées n'existent pas.
+
+**`setup.sh` : « ensurepip is not available » à la création du venv (Debian/Ubuntu)**
+- `sudo apt install python3.X-venv`, ou sans droits : installez Python via uv.
+
+**`pip install` échoue (proxy d'entreprise)**
+- `export HTTPS_PROXY=http://proxy:port` (et `HTTP_PROXY`) puis relancez `./setup.sh` ;
+  si le proxy réécrit les certificats : `pip config set global.trusted-host "pypi.org files.pythonhosted.org"`.
+
 **Backend ne démarre pas:**
-- Vérifier port 8000 libre: `lsof -i :8000` (Linux/macOS) / `Get-NetTCPConnection -LocalPort 8000` (Windows) / `.\stop.ps1`
+- Vérifier port 8000 libre: `lsof -i :8000` (Linux/macOS) / `Get-NetTCPConnection -LocalPort 8000` (Windows), ou simplement `./stop.sh` / `.\stop.ps1`
 - Vérifier PYTHONPATH: `export PYTHONPATH=backend` (ou lancer depuis `backend/`)
-- Logs: fenêtre backend, `logs\backend.log` (mode `-Background`), ou `docker-compose logs backend`
+- Logs: `logs/backend.log` (`start.sh` ou `start.ps1 -Background`) ou la fenêtre backend (`start.ps1`)
 
 **Frontend ne se connecte pas au backend:**
-- Vérifier la variable d'environnement `BACKEND_URL` : `http://localhost:8000` (local, positionnée par `start.ps1`) ou `http://backend:8000` (docker)
-- Derrière un proxy d'entreprise : `NO_PROXY=localhost,127.0.0.1` (positionnée par `start.ps1`)
+- Vérifier la variable d'environnement `BACKEND_URL` : `http://localhost:8000` (positionnée par `start.ps1` / `start.sh`)
+- Derrière un proxy d'entreprise : `NO_PROXY=localhost,127.0.0.1` (positionnée par les scripts de lancement)
 - Vérifier CORS_ORIGINS
 
 **APIs publiques down:**
@@ -158,6 +185,10 @@ pytest tests/ -v
 - Normal si pas de clé, fallback local activé, 100% fonctionnel
 - Pour activer, ajouter clé dans .env
 
+**Désinstallation**
+- `./stop.sh` (ou `.\stop.ps1`) puis supprimer le dossier du dépôt : rien n'est installé ailleurs
+  (le `.venv`, `.env`, `logs/` et `backend/generated/` sont dans le dépôt).
+
 ## Structure Projet
 
 ```
@@ -165,7 +196,7 @@ pytest tests/ -v
 ├── backend/
 │   ├── app/
 │   │   ├── main.py (FastAPI)
-│   │   ├── core/ (config, logging)
+│   │   ├── core/ (config, logging, paths)
 │   │   ├── api/routes/ (6 modules)
 │   │   ├── services/ (logique métier)
 │   │   ├── data/connectors/ (Energy-Charts, Open-Meteo, ENTSO-E, Mock)
@@ -180,9 +211,10 @@ pytest tests/ -v
 │   ├── concepts/ (capture_rate, baseload, BESS...)
 │   └── models/ (AFRY, Aurora)
 ├── docs/
-├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 (Windows natif)
-├── requirements-windows.txt
-├── docker-compose.yml (optionnel)
+├── scripts/ (check_install.py, run_logged.py, windows/common.ps1, unix/common.sh)
+├── setup.ps1 / start.ps1 / stop.ps1 / test.ps1 (Windows)
+├── setup.sh / start.sh / stop.sh / test.sh (Linux / macOS)
+├── requirements.txt / requirements-dev.txt
 └── .env.example
 ```
 

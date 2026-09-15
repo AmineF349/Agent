@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Charge le .env de la racine du depot (BACKEND_URL, ports...) sans ecraser les
-# variables deja presentes dans l'environnement (start.ps1 / docker-compose).
+# variables deja presentes dans l'environnement (start.ps1 / start.sh).
 try:
     from dotenv import load_dotenv
 

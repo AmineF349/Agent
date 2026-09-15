@@ -21,15 +21,17 @@
 **Windows :** lancez d'abord `.\setup.ps1` (terminal PowerShell, à la racine). Le venv
 `.venv\Scripts\python.exe` est alors présélectionné par `.vscode/settings.json`.
 
-Sinon (Linux/macOS ou manuel) :
+**Linux / macOS :** lancez `./setup.sh --dev` puis `Ctrl+Shift+P` (ou `Cmd+Shift+P`) ->
+"Python: Select Interpreter" -> `.venv/bin/python` (le chemin par défaut de `settings.json`
+vise le venv Windows ; VS Code détecte de toute façon le `.venv` du workspace).
 
-1. `Ctrl+Shift+P` (ou `Cmd+Shift+P` Mac) -> "Python: Select Interpreter"
-2. Choisir `.venv/bin/python` (ou `.venv\Scripts\python.exe`) ou créer nouveau venv:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate          # Windows : .\.venv\Scripts\Activate.ps1
-   pip install -r requirements-windows.txt   # backend + frontend, wheels précompilées
-   ```
+Manuel (toutes plateformes) :
+
+```bash
+python -m venv .venv
+source .venv/bin/activate                          # Windows : .\.venv\Scripts\Activate.ps1
+pip install --only-binary :all: -r requirements.txt -r requirements-dev.txt
+```
 
 ## Lancement Debug (F5)
 
@@ -54,15 +56,18 @@ Sinon (Linux/macOS ou manuel) :
 
 ## Tasks (Ctrl+Shift+P -> Tasks: Run Task)
 
-- **Windows: Setup (setup.ps1)**: installation complète sans Docker (`-Dev` inclus)
+- **Windows: Setup (setup.ps1)**: installation complète (`-Dev` inclus)
 - **Windows: Start (setup.ps1)**: backend + frontend dans deux fenêtres (tâche build par défaut : `Ctrl+Shift+B`)
 - **Windows: Stop (stop.ps1)**: arrêt des deux services
 - **Windows: Tests (test.ps1)**: pytest (tâche test par défaut)
+- **Linux/macOS: Setup / Start / Stop / Tests (`.sh`)**: mêmes rôles avec `setup.sh --dev`, `start.sh`, `stop.sh`, `test.sh`
 - **Run Backend (venv)**: lance backend sans debug (interpréteur `.venv`)
 - **Run Frontend (venv)**: lance frontend sans debug
 - **Run Tests (venv)**: pytest
 - **Lint Backend (flake8)**
-- **Docker Compose Up**: optionnel, hors poste Windows restreint
+
+Les tâches « Run … (venv) » fonctionnent sur toutes les plateformes (l'interpréteur `.venv` est résolu
+par OS : `.venv\Scripts\python.exe` sous Windows, `.venv/bin/python` sous Linux/macOS).
 
 ## Tests
 
@@ -136,17 +141,17 @@ def test_new_kpi():
 - `st.json()` pour afficher dict
 - Logs dans terminal Streamlit
 
-### Windows sans Docker
+### Windows (scripts PowerShell)
 
 - `start.ps1` ouvre deux fenêtres PowerShell : les logs y défilent en direct
 - Mode `-Background` : logs dans `logs\backend.log` et `logs\frontend.log`
 - `.\stop.ps1` pour tout arrêter (aussi disponible en tâche VS Code)
 
-### Docker (optionnel)
+### Linux / macOS
 
-- Si Docker Compose Up, logs dans terminal Task
-- `docker-compose logs -f backend` pour voir logs
-- `docker-compose exec backend bash` pour shell dans container
+- `./start.sh` : logs dans `logs/backend.log` et `logs/frontend.log` (`tail -f logs/backend.log`)
+- `./start.sh --foreground` : garde la main dans le terminal, Ctrl+C arrête les deux services
+- `./stop.sh` pour tout arrêter
 
 ## Environnement
 
@@ -190,11 +195,11 @@ def test_new_kpi():
 - Relancer VS Code
 
 **Port déjà utilisé:**
-- `lsof -i :8000` puis `kill -9 <PID>`
+- `./stop.sh` / `.\stop.ps1`, ou `lsof -i :8000` puis `kill <PID>`
 - Ou changer port dans `launch.json`
 
 **Streamlit ne se lance pas:**
-- Vérifier `pip install -r frontend/requirements.txt`
+- Vérifier `pip install --only-binary :all: -r requirements.txt` (ou relancer `setup.ps1` / `setup.sh`)
 - Vérifier port 8501 libre
 - Logs dans Debug Console
 
