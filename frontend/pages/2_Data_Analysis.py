@@ -86,10 +86,16 @@ with tab1:
                     try:
                         # Try API
                         import tempfile
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
-                            df.to_csv(tmp.name, index=False)
-                            result = client.data_quality_csv(tmp.name, data_type)
+                        tmp_path = None
+                        try:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+                                tmp_path = tmp.name
+                                df.to_csv(tmp_path, index=False)
+                            result = client.data_quality_csv(tmp_path, data_type)
                             st.json(result)
+                        finally:
+                            if tmp_path and os.path.exists(tmp_path):
+                                os.unlink(tmp_path)
                     except Exception as e2:
                         st.error(f"API aussi KO: {e2}")
 
@@ -126,16 +132,26 @@ with tab2:
             ren_data = gen.generate_renewable_profile(technology=tech, days=30, capacity_mw=100)
             generation = [d["generation_mw"] for d in ren_data]
             st.success(f"Généré {len(prices)} prix + {len(generation)} génération {tech}")
+        else:
+            try:
+                fallback = client.fetch_market_data(country=country, data_type="day_ahead_prices")
+                prices = [float(row["price"]) for row in fallback.get("data", []) if row.get("price") is not None]
+                st.info(f"Backend mock utilisé : {len(prices)} prix")
+            except Exception as exc:
+                st.error(f"Impossible de charger les données marché : {exc}")
 
     elif input_method == "Live API Energy-Charts":
         if st.button("Fetch live FR"):
             try:
                 live = client.live_prices(country=country)
                 data = live.get("prices_last_week", [])
-                prices = [d.get("price", 0) for d in data]
+                prices = [float(d["price"]) for d in data if d.get("price") is not None]
+                st.session_state["analysis_prices"] = prices
                 st.success(f"Fetched {len(prices)} prix live")
             except Exception as e:
                 st.error(f"Erreur fetch: {e}")
+        else:
+            prices = st.session_state.get("analysis_prices", [])
 
     elif input_method == "Manuel":
         prices_str = st.text_area("Prix EUR/MWh séparés par virgule", "45,42,38,52,68,78,85,82,75,68,65,62,65,72,85,92,88,75,62,52,48,44")
@@ -145,16 +161,51 @@ with tab2:
             st.error("Format invalide")
 
     if prices:
+        st.session_state["market_context"] = {
+            "country": country,
+            "technology": tech,
+            "prices": [float(value) for value in prices],
+            "generation": [float(value) for value in generation] if generation else None,
+            "source": input_method,
+        }
         st.markdown(f"**{len(prices)} prix** | Min {min(prices):.1f} Max {max(prices):.1f} Mean {np.mean(prices):.1f}")
+
+        loaded = st.session_state.get("dashboard_market_context")
+        if loaded and st.button(
+            "🆚 Comparer avec les données du Dashboard", key="compare_dashboard"
+        ):
+            comparison = {
+                "series": [
+                    {"name": "Analyse courante", "prices": prices, "generation": generation},
+                    {"name": "Dashboard live", "prices": loaded["prices"]},
+                ]
+            }
+            try:
+                result = client.agent_chat(
+                    "Compare les deux séries de prix chargées et explique les écarts",
+                    country=country,
+                    context={"comparison": comparison, "country": country, "technology": tech},
+                )
+                st.subheader("Résultat de comparaison")
+                st.markdown(result.get("results", {}).get("synthesis", "Comparaison indisponible"))
+                st.json(result.get("results", {}).get("comparison", {}))
+            except Exception as exc:
+                st.error(f"Erreur comparaison : {exc}")
 
         if st.button("Calculer KPI Marché", type="primary"):
             with st.spinner("Calcul..."):
                 try:
-                    from backend.app.services.market_analysis_engine import MarketAnalysisEngine
-                    engine = MarketAnalysisEngine()
-                    result = engine.analyze(prices=prices, generation=generation, country=country, technology=tech)
+                    try:
+                        from backend.app.services.market_analysis_engine import MarketAnalysisEngine
+                        result = MarketAnalysisEngine().analyze(
+                            prices=prices, generation=generation, country=country, technology=tech
+                        )
+                    except ImportError:
+                        result = client.market_analysis(
+                            prices=prices, generation=generation, country=country, technology=tech
+                        )
 
-                    metrics = result.metrics
+                    metrics = result.metrics if hasattr(result, "metrics") else type("Metrics", (), result["metrics"])()
                     st.success("Analyse terminée")
 
                     # KPI cards
@@ -195,13 +246,16 @@ with tab2:
 
                     # Insights
                     st.subheader("💡 Insights Proactifs (Agent)")
-                    for insight in result.insights:
+                    insights = result.insights if hasattr(result, "insights") else result["insights"]
+                    warnings = result.warnings if hasattr(result, "warnings") else result["warnings"]
+                    chart_data = result.chart_data if hasattr(result, "chart_data") else result["chart_data"]
+                    for insight in insights:
                         st.info(insight)
-                    for warn in result.warnings:
+                    for warn in warnings:
                         st.warning(warn)
 
                     # Chart data
-                    st.json(result.chart_data)
+                    st.json(chart_data)
 
                 except Exception as e:
                     st.error(f"Erreur analysis: {e}")

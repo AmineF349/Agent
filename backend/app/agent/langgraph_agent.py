@@ -71,6 +71,7 @@ class PowerMarketAgent:
             workflow.add_node("intent_detection", self._detect_intent)
             workflow.add_node("data_quality", self._handle_data_quality)
             workflow.add_node("market_analysis", self._handle_market_analysis)
+            workflow.add_node("comparison", self._handle_comparison)
             workflow.add_node("scenario_challenge", self._handle_scenario)
             workflow.add_node("knowledge_search", self._handle_knowledge)
             workflow.add_node("market_data_fetch", self._handle_market_data)
@@ -85,6 +86,7 @@ class PowerMarketAgent:
                 {
                     "data_quality": "data_quality",
                     "market_analysis": "market_analysis",
+                    "comparison": "comparison",
                     "scenario": "scenario_challenge",
                     "knowledge": "knowledge_search",
                     "market_data": "market_data_fetch",
@@ -94,6 +96,7 @@ class PowerMarketAgent:
 
             workflow.add_edge("data_quality", "synthesis")
             workflow.add_edge("market_analysis", "synthesis")
+            workflow.add_edge("comparison", "synthesis")
             workflow.add_edge("scenario_challenge", "synthesis")
             workflow.add_edge("knowledge_search", "synthesis")
             workflow.add_edge("market_data_fetch", "synthesis")
@@ -111,6 +114,10 @@ class PowerMarketAgent:
         # Simple keyword intent detection
         if any(k in query for k in ["qualité", "quality", "missing", "anomalie", "vérifier données"]):
             intent = "data_quality"
+        elif any(k in query for k in ["compar", "versus", " vs ", "écart entre"]) and any(
+            k in query for k in ["prix", "price", "prices", "marché", "marches", "afry", "aurora", "série", "series"]
+        ):
+            intent = "comparison"
         elif any(k in query for k in ["capture rate", "capture price", "baseload", "peakload", "negative hours", "cannibalisation", "market value", "prix"]):
             intent = "market_analysis"
         elif any(k in query for k in ["afry", "aurora", "scénario", "scenario", "hypothèse", "challenger"]):
@@ -146,6 +153,48 @@ class PowerMarketAgent:
                 state["results"]["market_analysis"] = {"error": str(e)}
         else:
             state["results"]["market_analysis"] = "Fournissez prix horaires pour analyse"
+        return state
+
+    def _handle_comparison(self, state: AgentState) -> AgentState:
+        """Compare two already-loaded price series supplied by the client."""
+        comparison = state["context"].get("comparison") or {}
+        series = comparison.get("series") if isinstance(comparison, dict) else None
+        if not isinstance(series, list) or len(series) < 2:
+            # Also accept the compact form used by API clients.
+            series = [
+                {"name": "A", "prices": state["context"].get("prices_a", [])},
+                {"name": "B", "prices": state["context"].get("prices_b", [])},
+            ]
+        analyses = []
+        for item in series[:2]:
+            prices = item.get("prices") if isinstance(item, dict) else None
+            if not prices:
+                continue
+            try:
+                result = self.market_engine.analyze(
+                    prices=prices,
+                    generation=item.get("generation") if isinstance(item, dict) else None,
+                    country=state["context"].get("country", "FR"),
+                    technology=state["context"].get("technology", "solar"),
+                )
+                analyses.append({"name": item.get("name", f"Series {len(analyses) + 1}"), "analysis": result.model_dump()})
+            except Exception as exc:
+                analyses.append({"name": item.get("name", "Series"), "error": str(exc)})
+        if len(analyses) < 2:
+            state["results"]["comparison"] = {
+                "error": "Fournissez deux séries de prix dans le contexte (comparison.series)."
+            }
+            return state
+        left = analyses[0].get("analysis", {}).get("metrics", {})
+        right = analyses[1].get("analysis", {}).get("metrics", {})
+        state["results"]["comparison"] = {
+            "series": analyses,
+            "delta": {
+                "baseload": round(left.get("baseload", 0) - right.get("baseload", 0), 2),
+                "negative_hours": left.get("negative_hours", 0) - right.get("negative_hours", 0),
+                "volatility": round(left.get("volatility", 0) - right.get("volatility", 0), 4),
+            },
+        }
         return state
 
     def _handle_scenario(self, state: AgentState) -> AgentState:
@@ -230,7 +279,8 @@ Ton senior, marché électrique européen.
                     "intent": final_state.get("intent"),
                     "results": final_state.get("results"),
                     "messages": final_state.get("messages"),
-                    "mode": "langgraph"
+                    "mode": "langgraph",
+                    "context": final_state.get("context", {}),
                 }
             except Exception as e:
                 logger.warning(f"LangGraph run failed: {e}, fallback to simple")
@@ -243,6 +293,8 @@ Ton senior, marché électrique européen.
             state = self._handle_data_quality(state)
         elif intent == "market_analysis":
             state = self._handle_market_analysis(state)
+        elif intent == "comparison":
+            state = self._handle_comparison(state)
         elif intent == "scenario":
             state = self._handle_scenario(state)
         elif intent == "market_data":
@@ -257,7 +309,8 @@ Ton senior, marché électrique européen.
             "intent": intent,
             "results": state["results"],
             "messages": state["messages"],
-            "mode": "simple_routing"
+            "mode": "simple_routing",
+            "context": state["context"],
         }
 
     def proactive_suggestions(self, last_analysis: Dict[str, Any]) -> List[str]:
