@@ -104,6 +104,13 @@ with tab1:
 
         prices_data = live.get("prices_last_week", [])
         if prices_data:
+            # Keep the data available across Streamlit reruns/pages for the
+            # analysis and chatbot comparison workflows.
+            st.session_state["dashboard_market_context"] = {
+                "country": country,
+                "prices": [float(row["price"]) for row in prices_data if row.get("price") is not None],
+                "source": live.get("source"),
+            }
             import pandas as pd
             df = pd.DataFrame(prices_data)
             if "price" in df.columns:
@@ -151,7 +158,14 @@ with tab2:
         with st.chat_message("assistant"):
             with st.spinner("Analyse en cours..."):
                 try:
-                    result = client.agent_chat(query=prompt, country=country)
+                    result = client.agent_chat(
+                        query=prompt,
+                        country=country,
+                        context=st.session_state.get(
+                            "market_context",
+                            st.session_state.get("dashboard_market_context", {}),
+                        ),
+                    )
                     # Show synthesis
                     synthesis = result.get("results", {}).get("synthesis", "Pas de synthèse")
                     st.markdown(synthesis)

@@ -1,0 +1,38 @@
+# -----------------------------------------------------------------------------
+#  Configuration Streamlit - lancement natif (sans Docker)
+# -----------------------------------------------------------------------------
+#  Ce fichier est lu par Streamlit lorsque le repertoire de travail est
+#  frontend\ (c'est ce que fait start.ps1).
+#
+#  Sous Docker, Dockerfile.frontend passe --server.address=0.0.0.0 en ligne de
+#  commande : les flags CLI ont precedence sur ce fichier, donc le
+#  comportement Docker est inchange.
+# -----------------------------------------------------------------------------
+
+[global]
+developmentMode = false
+
+[server]
+# 127.0.0.1 uniquement : aucune regle de pare-feu Windows, aucune invite UAC.
+address = "127.0.0.1"
+port = 8501
+headless = true
+# Le frontend Streamlit appelle le backend cote SERVEUR (requests/httpx), pas
+# depuis le navigateur : les regles CORS de Streamlit ne sont donc pas
+# sollicitees. On conserve les valeurs par defaut (protectrices).
+# NB: enableCORS=false est incompatible avec enableXsrfProtection=true et
+#     Streamlit le reforce silencieusement -> on ne le desactive pas.
+enableCORS = true
+enableXsrfProtection = true
+# Televersement des CSV dans "Data Analysis" (200 Mo).
+maxUploadSize = 200
+# Evite le watcher de fichiers (reseau/antivirus en entreprise).
+fileWatcherType = "none"
+
+[browser]
+# Aucune telemetrie : pas de tentative de sortie reseau au demarrage.
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#003366"

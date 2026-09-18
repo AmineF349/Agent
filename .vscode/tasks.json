@@ -2,6 +2,36 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Windows : Setup (sans Docker)",
+            "type": "shell",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File setup.ps1",
+            "windows": {
+                "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File setup.ps1"
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Windows : Start (sans Docker)",
+            "type": "shell",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File start.ps1",
+            "windows": {
+                "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File start.ps1"
+            },
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Windows : Stop",
+            "type": "shell",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File stop.ps1",
+            "windows": {
+                "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File stop.ps1"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Install Backend",
             "type": "shell",
             "command": "pip install -r backend/requirements.txt",
@@ -32,7 +62,13 @@
         {
             "label": "Run Backend",
             "type": "shell",
-            "command": "cd backend && uvicorn app.main:app --reload --port 8000 --host 0.0.0.0",
+            "command": "cd backend && ..\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1",
+            "windows": {
+                "command": "cd backend && ..\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1"
+            },
+            "linux": {
+                "command": "cd backend && ../.venv/bin/python -m uvicorn app.main:app --reload --port 8000 --host 127.0.0.1"
+            },
             "group": "build",
             "isBackground": true,
             "presentation": {
@@ -45,7 +81,13 @@
         {
             "label": "Run Frontend",
             "type": "shell",
-            "command": "cd frontend && streamlit run app.py --server.port 8501 --server.address 0.0.0.0",
+            "command": "cd frontend && ..\\.venv\\Scripts\\python.exe -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1",
+            "windows": {
+                "command": "cd frontend && ..\\.venv\\Scripts\\python.exe -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1"
+            },
+            "linux": {
+                "command": "cd frontend && ../.venv/bin/python -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1"
+            },
             "group": "build",
             "isBackground": true,
             "presentation": {

@@ -3,6 +3,7 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.api_client import APIClient
 import json
+from pathlib import Path
 
 st.set_page_config(page_title="Scenario Review", page_icon="🔍", layout="wide")
 client = APIClient()
@@ -37,9 +38,7 @@ with tab1:
 
         if st.button("Charger sample_scenario.json"):
             try:
-                sample_path = "backend/data_samples/sample_scenario.json"
-                if not os.path.exists(sample_path):
-                    sample_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", "data_samples", "sample_scenario.json")
+                sample_path = Path(__file__).resolve().parents[2] / "backend" / "data_samples" / "sample_scenario.json"
                 with open(sample_path) as f:
                     data = json.load(f)
                     st.json(data)
@@ -120,14 +119,10 @@ with tab2:
                 "aurora": AURORA_RANGES
             })
         except Exception as e:
-            st.error(f"Erreur: {e}")
-            # Try API
             try:
-                result = client.challenge_scenario  # dummy
-                # Use market_data sources as proxy
-                st.info("Utilisez API /api/v1/scenario/benchmarks/{country}")
-            except:
-                pass
+                st.json(client.scenario_benchmarks(bench_country))
+            except Exception as api_error:
+                st.error(f"Erreur API benchmarks: {api_error}")
 
     st.markdown("""
     **Ranges typiques 2030 FR:**

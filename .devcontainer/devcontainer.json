@@ -1,0 +1,17 @@
+{
+  "name": "Power Market Intelligence Agent",
+  "image": "mcr.microsoft.com/vscode/devcontainers/python:1-3.12-bookworm",
+  "remoteUser": "vscode",
+  "forwardPorts": [8000, 8501],
+  "portsAttributes": {
+    "8000": {
+      "label": "FastAPI",
+      "onAutoForward": "notify"
+    },
+    "8501": {
+      "label": "Streamlit",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "python -m pip install --upgrade pip"
+}

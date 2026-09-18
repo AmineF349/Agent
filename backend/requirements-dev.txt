@@ -1,0 +1,3 @@
+# Dependances de developpement / tests (installees par : .\setup.ps1 -WithDev)
+# Les dependances runtime sont dans backend/requirements.txt
+pytest==8.1.1

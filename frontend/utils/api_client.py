@@ -44,6 +44,11 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
+    def scenario_benchmarks(self, country: str = "FR") -> Dict[str, Any]:
+        resp = requests.get(f"{self.base_url}/api/v1/scenario/benchmarks/{country}", timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
     def prepare_meeting(self, meeting_type: str, topic: str, context: str = "", duration: int = 60) -> Dict[str, Any]:
         payload = {
             "meeting_type": meeting_type,
@@ -91,8 +96,15 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
-    def agent_chat(self, query: str, country: str = "FR") -> Dict[str, Any]:
-        resp = requests.post(f"{self.base_url}/api/v1/agent/chat", params={"query": query, "country": country}, timeout=30)
+    def agent_chat(self, query: str, country: str = "FR", context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        # ``query`` remains a query parameter for backwards compatibility; the
+        # structured context is sent as JSON so loaded prices are not lost.
+        resp = requests.post(
+            f"{self.base_url}/api/v1/agent/chat",
+            params={"query": query, "country": country},
+            json=context or {},
+            timeout=30,
+        )
         resp.raise_for_status()
         return resp.json()
 
